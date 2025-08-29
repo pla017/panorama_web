@@ -1,190 +1,10 @@
 <template>
   <div class="simple-panorama-viewer">
-    <!-- 控制面板 -->
-    <div class="control-panel">
-      <!-- 第一行：播放控制 -->
-      <div class="control-row">
-        <div class="control-group">
-          <!-- 上一个视频 -->
-          <el-button @click="previousVideo" size="small" :disabled="currentVideoIndex <= 0">
-            <el-icon><ArrowLeftBold /></el-icon>
-            上一个
-          </el-button>
-
-          <!-- 播放/暂停 -->
-          <el-button @click="togglePlay" :type="isPlaying ? 'danger' : 'primary'" size="small">
-            <el-icon>
-              <VideoPause v-if="isPlaying" />
-              <VideoPlay v-else />
-            </el-icon>
-          </el-button>
-          
-          <!-- 快退 -->
-          <el-button @click="skipBackward" size="small" :disabled="!video">
-            <el-icon><DArrowLeft /></el-icon>
-            -{{ skipTime }}s
-          </el-button>
-          
-          <!-- 快进 -->
-          <el-button @click="skipForward" size="small" :disabled="!video">
-            <el-icon><DArrowRight /></el-icon>
-            +{{ skipTime }}s
-          </el-button>
-
-          <!-- 下一个视频 -->
-          <el-button @click="nextVideo" size="small" :disabled="currentVideoIndex >= videoList.length - 1">
-            <el-icon><ArrowRightBold /></el-icon>
-            下一个
-          </el-button>
-          
-          <!-- 时间显示和进度条 -->
-          <div class="time-controls">
-            <span class="time-display">{{ formatTime(currentTime) }}</span>
-            <div class="progress-container">
-              <el-slider
-                v-model="currentTime"
-                :max="videoDuration"
-                :step="0.1"
-                :show-tooltip="false"
-                @change="handleSliderChange"
-                @input="handleSliderInput"
-                class="progress-slider"
-              />
-              <!-- 进度条标记点 -->
-              <div class="progress-markers">
-                <div 
-                  v-for="marker in progressMarkers" 
-                  :key="marker.id"
-                  :style="{ left: (marker.time / videoDuration) * 100 + '%' }"
-                  class="progress-marker"
-                  :class="marker.type"
-                  @click="seekTo(marker.time)"
-                  @mouseenter="showMarkerTooltip(marker)"
-                  @mouseleave="hideMarkerTooltip"
-                >
-                  <div class="marker-dot"></div>
-                </div>
-              </div>
-              <!-- 悬停预览 -->
-              <div 
-                v-if="showPreview" 
-                :style="{ left: previewPosition + 'px' }"
-                class="progress-preview"
-              >
-                <div class="preview-thumbnail">
-                  <canvas ref="previewCanvas" width="160" height="90"></canvas>
-                </div>
-                <div class="preview-time">{{ formatTime(previewTime) }}</div>
-              </div>
-            </div>
-            <span class="time-display">{{ formatTime(videoDuration) }}</span>
-          </div>
-        </div>
-        
-        <div class="status-info">
-          <el-tag :type="statusType">{{ status }}</el-tag>
-          <span class="ml-2 text-sm text-gray-600">{{ statusMessage }}</span>
-        </div>
-      </div>
-
-      <!-- 第二行：高级控制 -->
-      <div class="control-row">
-        <div class="control-group">
-          <!-- 倍速控制 -->
-          <div class="speed-control">
-            <span class="control-label">倍速:</span>
-            <el-select v-model="playbackRate" @change="changePlaybackRate" size="small" style="width: 80px;">
-              <el-option label="0.5x" :value="0.5" />
-              <el-option label="0.75x" :value="0.75" />
-              <el-option label="1x" :value="1" />
-              <el-option label="1.25x" :value="1.25" />
-              <el-option label="1.5x" :value="1.5" />
-              <el-option label="2x" :value="2" />
-              <el-option label="2.5x" :value="2.5" />
-            </el-select>
-          </div>
-
-          <!-- 音量控制 -->
-          <div class="volume-control">
-            <el-button @click="toggleMute" size="small">
-              <el-icon>
-                <Mute v-if="isMuted" />
-                <VideoPlay v-else />
-              </el-icon>
-            </el-button>
-            <el-slider
-              v-model="volume"
-              :max="100"
-              :show-tooltip="false"
-              @change="changeVolume"
-              style="width: 80px; margin: 0 8px;"
-            />
-          </div>
-
-          <!-- 截图功能 -->
-          <el-button @click="captureScreenshot" size="small" :disabled="!video">
-            <el-icon><Camera /></el-icon>
-            截图
-          </el-button>
-
-          <!-- 全屏 -->
-          <el-button @click="toggleFullscreen" size="small">
-            <el-icon><FullScreen /></el-icon>
-            全屏
-          </el-button>
-
-          <!-- 自动旋转 -->
-          <el-button @click="toggleAutoRotate" :type="autoRotate ? 'primary' : 'default'" size="small">
-            <el-icon><Refresh /></el-icon>
-            {{ autoRotate ? '停止旋转' : '自动旋转' }}
-          </el-button>
-
-          <!-- 缩放控制 -->
-          <div class="zoom-controls">
-            <el-button @click="zoomIn" size="small" :disabled="currentFOV <= minFOV">
-              <el-icon><ZoomIn /></el-icon>
-              放大
-            </el-button>
-            <el-button @click="zoomOut" size="small" :disabled="currentFOV >= maxFOV">
-              <el-icon><ZoomOut /></el-icon>
-              缩小
-            </el-button>
-            <el-button @click="resetZoom" size="small">
-              <el-icon><Aim /></el-icon>
-              原始尺寸
-            </el-button>
-          </div>
-
-          <!-- 重置视角 -->
-          <el-button @click="resetView" size="small">
-            <el-icon><Refresh /></el-icon>
-            重置视角
-          </el-button>
-
-          <!-- 设置按钮 -->
-          <el-button @click="showSettingsPanel = true" size="small">
-            <el-icon><Setting /></el-icon>
-            设置
-          </el-button>
-
-          <!-- 标记管理 -->
-          <div class="marker-controls">
-            <el-button @click="addMarker" size="small" :disabled="!video">
-              <el-icon><Plus /></el-icon>
-              添加标记
-            </el-button>
-            <el-button @click="showMarkerManager = true" size="small">
-              <el-icon><List /></el-icon>
-              管理标记
-            </el-button>
-          </div>
-
-          <!-- 视频列表按钮 -->
-          <el-button @click="showVideoList = true" size="small">
-            <el-icon><VideoPlay /></el-icon>
-            播放列表
-          </el-button>
-        </div>
+    <!-- 顶部状态栏 -->
+    <div class="top-status-bar">
+      <div class="video-title">{{ currentVideo?.name || '全景视频播放器' }}</div>
+      <div class="status-info">
+        <el-tag :type="statusType" size="small">{{ status }}</el-tag>
       </div>
     </div>
 
@@ -294,31 +114,239 @@
       </template>
     </el-dialog>
 
-    <!-- 渲染容器 -->
-    <div 
-      ref="containerRef" 
-      class="viewer-container"
-      @mousedown="onMouseDown"
-      @mousemove="onMouseMove"
-      @mouseup="onMouseUp"
-      @wheel="onWheel"
-    >
-      <canvas ref="canvasRef" class="viewer-canvas"></canvas>
-      
-      <!-- 加载状态 -->
-      <div v-if="loading" class="overlay">
-        <div class="loading-content">
-          <el-loading-spinner size="large" />
-          <p class="mt-4 text-white">{{ loadingMessage }}</p>
+    <!-- 主要视角容器 -->
+    <div class="main-viewer-container">
+      <div 
+        ref="containerRef" 
+        class="viewer-container"
+        @mousedown="onMouseDown"
+        @mousemove="onMouseMove"
+        @mouseup="onMouseUp"
+        @wheel="onWheel"
+      >
+        <canvas ref="canvasRef" class="viewer-canvas"></canvas>
+        
+        <!-- 加载状态 -->
+        <div v-if="loading" class="overlay">
+          <div class="loading-content">
+            <el-loading-spinner size="large" />
+            <p class="mt-4 text-white">{{ loadingMessage }}</p>
+          </div>
+        </div>
+
+        <!-- 错误状态 -->
+        <div v-if="error" class="overlay">
+          <div class="error-content">
+            <el-icon size="48" color="#f56c6c"><Warning /></el-icon>
+            <p class="mt-4 text-white">{{ error }}</p>
+            <el-button @click="retry" class="mt-4">重试</el-button>
+          </div>
+        </div>
+
+        <!-- 四视角浮动面板 -->
+        <div v-if="showQuadView" class="quad-view-overlay">
+          <div class="quad-view-header">
+            <span class="quad-view-title">四视角导航</span>
+            <el-button size="small" text @click="showQuadView = false">
+              <el-icon><Close /></el-icon>
+            </el-button>
+          </div>
+          <div class="quad-views-grid">
+            <div 
+              v-for="(view, index) in quadViews" 
+              :key="index"
+              :class="['quad-view-item', { active: activeQuadView === index }]"
+              @click="switchToQuadView(index)"
+            >
+              <canvas 
+                :ref="(el: any) => { if (el) quadCanvasRefs[index] = el as HTMLCanvasElement }"
+                class="quad-canvas"
+                width="120" 
+                height="90"
+              ></canvas>
+              <div class="quad-view-label">{{ view.label }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部控制栏 -->
+    <div class="bottom-controls">
+      <!-- 第一行：播放控制和进度条 -->
+      <div class="playback-row">
+        <!-- 播放控制组 -->
+        <div class="playback-controls">
+          <!-- 视频导航 -->
+          <el-button @click="previousVideo" size="small" :disabled="currentVideoIndex <= 0">
+            <el-icon><ArrowLeftBold /></el-icon>
+          </el-button>
+          
+          <!-- 快退 -->
+          <el-button @click="skipBackward" size="small" :disabled="!video">
+            <el-icon><DArrowLeft /></el-icon>
+          </el-button>
+          
+          <!-- 播放/暂停 -->
+          <el-button @click="togglePlay" :type="isPlaying ? 'danger' : 'primary'" size="large">
+            <el-icon size="20">
+              <VideoPause v-if="isPlaying" />
+              <VideoPlay v-else />
+            </el-icon>
+          </el-button>
+          
+          <!-- 快进 -->
+          <el-button @click="skipForward" size="small" :disabled="!video">
+            <el-icon><DArrowRight /></el-icon>
+          </el-button>
+          
+          <!-- 下一个视频 -->
+          <el-button @click="nextVideo" size="small" :disabled="currentVideoIndex >= videoList.length - 1">
+            <el-icon><ArrowRightBold /></el-icon>
+          </el-button>
+        </div>
+
+        <!-- 进度条区域 -->
+        <div class="progress-section">
+          <div class="time-display">{{ formatTime(currentTime) }}</div>
+          <div class="progress-container">
+            <el-slider
+              v-model="currentTime"
+              :max="videoDuration"
+              :step="0.1"
+              :show-tooltip="false"
+              @change="handleSliderChange"
+              @input="handleSliderInput"
+              class="progress-slider"
+            />
+            <!-- 进度条标记点 -->
+            <div class="progress-markers">
+              <div 
+                v-for="marker in progressMarkers" 
+                :key="marker.id"
+                :style="{ left: (marker.time / videoDuration) * 100 + '%' }"
+                class="progress-marker"
+                :class="marker.type"
+                @click="seekTo(marker.time)"
+                @mouseenter="showMarkerTooltip(marker)"
+                @mouseleave="hideMarkerTooltip"
+              >
+                <div class="marker-dot"></div>
+              </div>
+            </div>
+            <!-- 悬停预览 -->
+            <div 
+              v-if="showPreview" 
+              :style="{ left: previewPosition + 'px' }"
+              class="progress-preview"
+            >
+              <div class="preview-thumbnail">
+                <canvas ref="previewCanvas" width="160" height="90"></canvas>
+              </div>
+              <div class="preview-time">{{ formatTime(previewTime) }}</div>
+            </div>
+          </div>
+          <div class="time-display">{{ formatTime(videoDuration) }}</div>
+        </div>
+
+        <!-- 右侧快捷功能 -->
+        <div class="quick-controls">
+          <!-- 音量控制 -->
+          <el-button @click="toggleMute" size="small">
+            <el-icon>
+              <Mute v-if="isMuted" />
+              <VideoPlay v-else />
+            </el-icon>
+          </el-button>
+          
+          <!-- 全屏 -->
+          <el-button @click="toggleFullscreen" size="small">
+            <el-icon><FullScreen /></el-icon>
+          </el-button>
         </div>
       </div>
 
-      <!-- 错误状态 -->
-      <div v-if="error" class="overlay">
-        <div class="error-content">
-          <el-icon size="48" color="#f56c6c"><Warning /></el-icon>
-          <p class="mt-4 text-white">{{ error }}</p>
-          <el-button @click="retry" class="mt-4">重试</el-button>
+      <!-- 第二行：详细工具栏 -->
+      <div class="toolbar-row">
+        <div class="toolbar-group">
+          <!-- 倍速和音量 -->
+          <div class="media-controls">
+            <span class="control-label">倍速:</span>
+            <el-select v-model="playbackRate" @change="changePlaybackRate" size="small" style="width: 70px;">
+              <el-option label="0.5x" :value="0.5" />
+              <el-option label="1x" :value="1" />
+              <el-option label="1.5x" :value="1.5" />
+              <el-option label="2x" :value="2" />
+              <el-option label="2.5x" :value="2.5" />
+            </el-select>
+            
+            <span class="control-label ml-4">音量:</span>
+            <el-slider
+              v-model="volume"
+              :max="100"
+              :show-tooltip="false"
+              @change="changeVolume"
+              style="width: 80px;"
+            />
+            <span class="volume-text">{{ volume }}%</span>
+          </div>
+
+          <!-- 视角控制 -->
+          <div class="view-controls">
+            <el-button @click="resetView" size="small">
+              <el-icon><Refresh /></el-icon>
+              重置视角
+            </el-button>
+            <el-button @click="toggleAutoRotate" size="small" :type="autoRotate ? 'primary' : 'default'">
+              <el-icon><Refresh /></el-icon>
+              {{ autoRotate ? '停止旋转' : '自动旋转' }}
+            </el-button>
+          </div>
+
+          <!-- 缩放控制 -->
+          <div class="zoom-controls">
+            <el-button @click="zoomOut" size="small" :disabled="currentFOV >= maxFOV">
+              <el-icon><ZoomOut /></el-icon>
+            </el-button>
+            <el-button @click="resetZoom" size="small">
+              <el-icon><Aim /></el-icon>
+            </el-button>
+            <el-button @click="zoomIn" size="small" :disabled="currentFOV <= minFOV">
+              <el-icon><ZoomIn /></el-icon>
+            </el-button>
+          </div>
+
+          <!-- 功能按钮 -->
+          <div class="function-controls">
+            <el-button @click="toggleQuadView" size="small" :type="showQuadView ? 'primary' : 'default'">
+              <el-icon><Grid /></el-icon>
+              {{ showQuadView ? '单视角' : '四视角' }}
+            </el-button>
+            <el-button @click="captureScreenshot" size="small" :disabled="!video">
+              <el-icon><Camera /></el-icon>
+              截图
+            </el-button>
+            <el-button @click="addMarker" size="small" :disabled="!video">
+              <el-icon><Plus /></el-icon>
+              标记
+            </el-button>
+          </div>
+
+          <!-- 管理功能 -->
+          <div class="management-controls">
+            <el-button @click="showMarkerManager = true" size="small">
+              <el-icon><List /></el-icon>
+              标记管理
+            </el-button>
+            <el-button @click="showVideoList = true" size="small">
+              <el-icon><VideoPlay /></el-icon>
+              视频列表
+            </el-button>
+            <el-button @click="showSettingsPanel = true" size="small">
+              <el-icon><Setting /></el-icon>
+              设置
+            </el-button>
+          </div>
         </div>
       </div>
     </div>
@@ -468,7 +496,25 @@
         <p><strong>拖拽状态:</strong> {{ isDragging ? '拖拽中' : '正常' }}</p>
         <p><strong>视频状态:</strong> {{ video ? (video.paused ? '暂停' : '播放') : '未加载' }}</p>
         <p><strong>当前FOV:</strong> {{ currentFOV }}° ({{ getZoomPercentage() }})</p>
+        <p><strong>相机角度:</strong> Y={{ camera ? (camera.rotation.y * 180 / Math.PI).toFixed(1) : 0 }}°</p>
+        <p><strong>激活视角:</strong> {{ activeQuadView }} ({{ quadViews[activeQuadView]?.label || 'None' }})</p>
+        <p><strong>控制器状态:</strong> {{ controls ? (controls.enabled ? '启用' : '禁用') : '未初始化' }}</p>
+        <p><strong>四视角状态:</strong> {{ showQuadView ? '显示' : '隐藏' }} ({{ quadRenderers.length }} 渲染器)</p>
         <p><strong>Three.js场景:</strong> {{ sceneInfo }}</p>
+        
+        <div class="debug-controls">
+          <h5>调试控制</h5>
+          <div class="debug-buttons">
+            <el-button size="small" @click="testSwitchView(0)">测试正面</el-button>
+            <el-button size="small" @click="testSwitchView(1)">测试右侧</el-button>
+            <el-button size="small" @click="testSwitchView(2)">测试背面</el-button>
+            <el-button size="small" @click="testSwitchView(3)">测试左侧</el-button>
+          </div>
+          <div class="debug-buttons">
+            <el-button size="small" @click="logCameraState">输出相机状态</el-button>
+            <el-button size="small" @click="resetCameraManually">手动重置相机</el-button>
+          </div>
+        </div>
       </div>
       
       <h5>快捷键</h5>
@@ -481,6 +527,7 @@
         <p><strong>Shift+R:</strong> 自动旋转</p>
         <p><strong>S:</strong> 截图</p>
         <p><strong>1-4:</strong> 倍速 (0.5x, 1x, 1.5x, 2x)</p>
+        <p><strong>Q/W/E/Ctrl+R:</strong> 四视角切换 (正面/右侧/背面/左侧)</p>
         <p><strong>+/-:</strong> 放大/缩小</p>
         <p><strong>0:</strong> 恢复原始尺寸</p>
       </div>
@@ -522,7 +569,9 @@ import {
   Setting,
   ArrowLeftBold,
   ArrowRightBold,
-  Delete
+  Delete,
+  Grid,
+  Close
 } from '@element-plus/icons-vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
@@ -583,6 +632,25 @@ const videoInfo = ref({
   height: 0,
   fps: 30
 })
+
+// 四视角功能
+const showQuadView = ref(false)
+const activeQuadView = ref(0)
+const quadCanvasRefs: HTMLCanvasElement[] = []
+const quadViews = ref([
+  { label: '正面 0°', rotation: 0 },
+  { label: '右侧 90°', rotation: Math.PI / 2 },
+  { label: '背面 180°', rotation: Math.PI },
+  { label: '左侧 270°', rotation: Math.PI * 1.5 }
+])
+
+// 预定义的角度数组，确保一致性
+const QUAD_ANGLES = [0, Math.PI / 2, Math.PI, Math.PI * 1.5]
+
+// 四视角渲染器
+let quadRenderers: THREE.WebGLRenderer[] = []
+let quadCameras: THREE.PerspectiveCamera[] = []
+let quadControls: OrbitControls[] = []
 
 // 进度标记相关
 interface ProgressMarker {
@@ -880,6 +948,9 @@ const zoomIn = () => {
     camera.fov = newFOV
     camera.updateProjectionMatrix()
     
+    // 同步四视角相机
+    syncQuadCameras()
+    
     const zoomLevel = Math.round(((defaultFOV - newFOV) / (defaultFOV - minFOV)) * 100)
     ElMessage.success(`放大到 ${zoomLevel}%`)
   }
@@ -893,6 +964,9 @@ const zoomOut = () => {
     currentFOV.value = newFOV
     camera.fov = newFOV
     camera.updateProjectionMatrix()
+    
+    // 同步四视角相机
+    syncQuadCameras()
     
     if (newFOV > defaultFOV) {
       const shrinkLevel = Math.round(((newFOV - defaultFOV) / (maxFOV - defaultFOV)) * 100)
@@ -909,6 +983,10 @@ const resetZoom = () => {
   currentFOV.value = defaultFOV
   camera.fov = defaultFOV
   camera.updateProjectionMatrix()
+  
+  // 同步四视角相机
+  syncQuadCameras()
+  
   ElMessage.success('已恢复到原始尺寸')
 }
 
@@ -1299,6 +1377,9 @@ const switchToVideo = async (index: number) => {
     
     await init()
     
+    // 重新初始化四视角
+    await reinitQuadViews()
+    
     ElMessage.success(`已切换到: ${targetVideo.name}`)
   } catch (error) {
     console.error('切换视频失败:', error)
@@ -1369,6 +1450,283 @@ const removeVideo = (index: number) => {
   }
   
   ElMessage.success(`已删除视频: ${video.name}`)
+}
+
+// 四视角功能方法
+const toggleQuadView = async () => {
+  showQuadView.value = !showQuadView.value
+  if (showQuadView.value) {
+    console.log('开启四视角模式')
+    await initQuadViews()
+    // 确保初始化成功后设置默认激活视角
+    if (quadRenderers.length > 0) {
+      activeQuadView.value = 0
+      console.log('四视角初始化成功，设置默认激活视角为0')
+    } else {
+      console.error('四视角初始化失败')
+      ElMessage.error('四视角初始化失败')
+      showQuadView.value = false
+      return
+    }
+  } else {
+    disposeQuadViews()
+  }
+  ElMessage.info(showQuadView.value ? '已开启四视角模式' : '已关闭四视角模式')
+}
+
+const initQuadViews = async () => {
+  if (!scene || !videoTexture) {
+    console.warn('Scene or videoTexture not ready for quad views')
+    return
+  }
+  
+  // 等待DOM更新
+  await new Promise(resolve => setTimeout(resolve, 150))
+  
+  // 清理现有资源
+  disposeQuadViews()
+  
+  quadRenderers = []
+  quadCameras = []
+  quadControls = []
+  
+  let successCount = 0
+  
+  quadViews.value.forEach((view, index) => {
+    const canvas = quadCanvasRefs[index]
+    if (!canvas) {
+      console.warn(`Canvas ${index} not found`)
+      return
+    }
+    
+    try {
+      // 创建渲染器
+      const renderer = new THREE.WebGLRenderer({ 
+        canvas,
+        antialias: true,
+        preserveDrawingBuffer: true
+      })
+      renderer.setSize(120, 90)
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)) // 限制像素比以提高性能
+      renderer.setClearColor(0x000000)
+      
+      // 创建相机
+      const camera = new THREE.PerspectiveCamera(75, 120 / 90, 0.1, 1000)
+      camera.position.set(0, 0, 1)
+      
+      // 使用预定义角度设置初始旋转
+      const fixedAngle = QUAD_ANGLES[index]
+      camera.rotation.set(0, fixedAngle, 0)
+      camera.updateMatrixWorld(true)
+      
+      // 存储固定角度
+      Object.defineProperty(camera, '_fixedAngle', {
+        value: fixedAngle,
+        writable: false
+      })
+      
+      quadRenderers[index] = renderer
+      quadCameras[index] = camera
+      successCount++
+      
+      console.log(`Quad view ${index} (${view.label}) initialized successfully`)
+      
+    } catch (error) {
+      console.error(`Failed to initialize quad view ${index}:`, error)
+    }
+  })
+  
+  if (successCount > 0) {
+    console.log(`${successCount} quad views initialized successfully`)
+    // 开始渲染循环
+    renderQuadViews()
+  } else {
+    console.error('No quad views were initialized successfully')
+  }
+}
+
+let quadViewAnimationId: number | null = null
+
+const renderQuadViews = () => {
+  if (!showQuadView.value || !scene || quadRenderers.length === 0) {
+    quadViewAnimationId = null
+    return
+  }
+  
+  try {
+    quadRenderers.forEach((renderer, index) => {
+      if (renderer && quadCameras[index] && scene) {
+        const quadCamera = quadCameras[index]
+        
+        // 确保四视角相机始终保持正确的固定角度
+        const fixedAngle = (quadCamera as any)._fixedAngle
+        if (fixedAngle !== undefined) {
+          quadCamera.rotation.set(0, fixedAngle, 0)
+        }
+        
+        // 确保相机矩阵是最新的
+        quadCamera.updateMatrixWorld(true)
+        renderer.render(scene, quadCamera)
+      }
+    })
+  } catch (error) {
+    console.error('Error rendering quad views:', error)
+  }
+  
+  // 继续渲染循环
+  if (showQuadView.value) {
+    quadViewAnimationId = requestAnimationFrame(renderQuadViews)
+  }
+}
+
+const switchToQuadView = (index: number) => {
+  // 基本验证
+  if (!camera || !controls || index < 0 || index >= quadViews.value.length) {
+    console.error(`Invalid switch request: camera=${!!camera}, controls=${!!controls}, index=${index}`)
+    return
+  }
+  
+  const targetView = quadViews.value[index]
+  console.log(`切换到: ${targetView.label} (${index})`)
+  
+  // 更新激活状态
+  activeQuadView.value = index
+  
+  // 使用预定义的角度
+  const targetAngle = QUAD_ANGLES[index]
+  
+  console.log(`目标角度: ${(targetAngle * 180 / Math.PI)}°`)
+  
+  // 直接设置相机角度，不使用动画避免冲突
+  camera.position.set(0, 0, 1)
+  camera.rotation.set(0, targetAngle, 0)
+  camera.updateMatrixWorld(true)
+  
+  // 重置并更新控制器
+  controls.target.set(0, 0, 0)
+  controls.reset()
+  
+  console.log(`切换完成: ${targetView.label}`)
+  ElMessage.success(`已切换到${targetView.label}`)
+}
+
+const disposeQuadViews = () => {
+  // 停止渲染循环
+  if (quadViewAnimationId) {
+    cancelAnimationFrame(quadViewAnimationId)
+    quadViewAnimationId = null
+  }
+  
+  // 清理渲染器
+  quadRenderers.forEach((renderer, index) => {
+    if (renderer) {
+      try {
+        renderer.dispose()
+        console.log(`Disposed quad renderer ${index}`)
+      } catch (error) {
+        console.error(`Error disposing quad renderer ${index}:`, error)
+      }
+    }
+  })
+  
+  // 清理控制器
+  quadControls.forEach((control, index) => {
+    if (control) {
+      try {
+        control.dispose()
+        console.log(`Disposed quad control ${index}`)
+      } catch (error) {
+        console.error(`Error disposing quad control ${index}:`, error)
+      }
+    }
+  })
+  
+  // 重置数组
+  quadRenderers.length = 0
+  quadCameras.length = 0
+  quadControls.length = 0
+  
+  console.log('All quad view resources disposed')
+}
+
+// 同步四视角相机与主相机的某些属性（如FOV变化）
+const syncQuadCameras = () => {
+  if (!camera || quadCameras.length === 0) return
+  
+  quadCameras.forEach((quadCamera) => {
+    if (quadCamera) {
+      // 同步FOV和投影矩阵
+      quadCamera.fov = camera.fov
+      quadCamera.updateProjectionMatrix()
+    }
+  })
+}
+
+// 标准化角度到 0-2π 范围
+const normalizeAngle = (angle: number): number => {
+  while (angle < 0) angle += Math.PI * 2
+  while (angle >= Math.PI * 2) angle -= Math.PI * 2
+  return angle
+}
+
+// 重新初始化四视角（用于视频切换或其他需要重置的情况）
+const reinitQuadViews = async () => {
+  if (showQuadView.value) {
+    disposeQuadViews()
+    await new Promise(resolve => setTimeout(resolve, 100))
+    await initQuadViews()
+  }
+}
+
+// 调试函数
+const testSwitchView = (index: number) => {
+  console.log(`=== 测试切换到视角 ${index} ===`)
+  switchToQuadView(index)
+}
+
+const logCameraState = () => {
+  if (!camera) {
+    console.log('Camera not available')
+    return
+  }
+  
+  console.log('=== 相机状态详情 ===')
+  console.log(`位置: x=${camera.position.x.toFixed(3)}, y=${camera.position.y.toFixed(3)}, z=${camera.position.z.toFixed(3)}`)
+  console.log(`旋转: x=${camera.rotation.x.toFixed(3)}, y=${camera.rotation.y.toFixed(3)}, z=${camera.rotation.z.toFixed(3)}`)
+  console.log(`旋转(度): x=${(camera.rotation.x * 180 / Math.PI).toFixed(1)}°, y=${(camera.rotation.y * 180 / Math.PI).toFixed(1)}°, z=${(camera.rotation.z * 180 / Math.PI).toFixed(1)}°`)
+  console.log(`FOV: ${camera.fov}°`)
+  
+  if (controls) {
+    console.log(`控制器启用: ${controls.enabled}`)
+    console.log(`控制器目标: x=${controls.target.x.toFixed(3)}, y=${controls.target.y.toFixed(3)}, z=${controls.target.z.toFixed(3)}`)
+  }
+  
+  console.log(`激活视角: ${activeQuadView.value} (${quadViews.value[activeQuadView.value]?.label || 'None'})`)
+  console.log('==================')
+}
+
+const resetCameraManually = () => {
+  if (!camera || !controls) {
+    console.log('Camera or controls not available')
+    return
+  }
+  
+  console.log('=== 手动重置相机 ===')
+  
+  // 重置相机
+  camera.position.set(0, 0, 1)
+  camera.rotation.set(0, 0, 0)
+  camera.updateMatrixWorld(true)
+  
+  // 重置控制器
+  controls.target.set(0, 0, 0)
+  controls.update()
+  
+  // 重置激活视角
+  activeQuadView.value = 0
+  
+  console.log('相机已重置到初始状态')
+  ElMessage.success('相机已重置')
 }
 
 // 鼠标事件
@@ -1501,6 +1859,28 @@ const handleKeydown = (event: KeyboardEvent) => {
       event.preventDefault()
       resetZoom()
       break
+    case 'KeyQ':
+      event.preventDefault()
+      if (showQuadView.value) switchToQuadView(0) // 正面
+      break
+    case 'KeyW':
+      event.preventDefault()
+      if (showQuadView.value) switchToQuadView(1) // 右侧
+      break
+    case 'KeyE':
+      event.preventDefault()
+      if (showQuadView.value) switchToQuadView(2) // 背面
+      break
+    case 'KeyR':
+      event.preventDefault()
+      if (event.shiftKey) {
+        toggleAutoRotate()
+      } else if (event.ctrlKey && showQuadView.value) {
+        switchToQuadView(3) // 左侧
+      } else {
+        resetView()
+      }
+      break
   }
 }
 
@@ -1515,6 +1895,9 @@ onUnmounted(() => {
   if (animationId) {
     cancelAnimationFrame(animationId)
   }
+  
+  // 清理四视角资源
+  disposeQuadViews()
   
   if (video) {
     video.pause()
@@ -1552,6 +1935,114 @@ function getVideoErrorMessage(code: number): string {
   display: flex;
   flex-direction: column;
   position: relative;
+}
+
+/* 顶部状态栏样式 */
+.top-status-bar {
+  background: white;
+  padding: 8px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.video-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.status-info {
+  display: flex;
+  align-items: center;
+}
+
+/* 底部控制栏样式 */
+.bottom-controls {
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  padding: 16px;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* 第一行：播放控制和进度条 */
+.playback-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.progress-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.quick-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* 第二行：详细工具栏 */
+.toolbar-row {
+  border-top: 1px solid #f3f4f6;
+  padding-top: 12px;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.media-controls,
+.view-controls,
+.zoom-controls,
+.function-controls,
+.management-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.media-controls {
+  padding: 6px 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.control-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.volume-text {
+  font-size: 11px;
+  color: #9ca3af;
+  min-width: 30px;
+}
+
+.ml-4 {
+  margin-left: 16px;
 }
 
 .control-panel {
@@ -1592,9 +2083,11 @@ function getVideoErrorMessage(code: number): string {
 
 .time-display {
   font-size: 12px;
-  color: #666;
-  min-width: 40px;
+  color: #6b7280;
+  min-width: 45px;
   text-align: center;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-weight: 500;
 }
 
 .progress-container {
@@ -1605,6 +2098,24 @@ function getVideoErrorMessage(code: number): string {
 
 .progress-slider {
   width: 100%;
+}
+
+.progress-slider :deep(.el-slider__runway) {
+  height: 6px;
+  background-color: #f0f2f5;
+  border-radius: 3px;
+}
+
+.progress-slider :deep(.el-slider__bar) {
+  background: linear-gradient(90deg, #409eff 0%, #67c23a 100%);
+  border-radius: 3px;
+}
+
+.progress-slider :deep(.el-slider__button) {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #409eff;
+  background-color: white;
 }
 
 .progress-markers {
@@ -2025,5 +2536,266 @@ function getVideoErrorMessage(code: number): string {
 .add-video-section {
   padding-top: 16px;
   border-top: 1px solid #eee;
+}
+
+/* 调试控制样式 */
+.debug-controls {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #333;
+}
+
+.debug-controls h5 {
+  margin: 0 0 8px 0;
+  color: #fff;
+  font-size: 12px;
+}
+
+.debug-buttons {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.debug-buttons .el-button {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+/* 主视角容器样式 */
+.main-viewer-container {
+  flex: 1;
+  position: relative;
+}
+
+/* 四视角浮动面板样式 */
+.quad-view-overlay {
+  position: absolute;
+  top: 50px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 16px;
+  z-index: 100;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: 280px;
+}
+
+.quad-view-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quad-view-title {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.quad-views-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.quad-view-item {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.quad-view-item:hover {
+  border-color: #409EFF;
+  transform: scale(1.05);
+  box-shadow: 0 4px 16px rgba(64, 158, 255, 0.3);
+}
+
+.quad-view-item.active {
+  border-color: #67C23A;
+  box-shadow: 0 4px 16px rgba(103, 194, 58, 0.4);
+  background: rgba(103, 194, 58, 0.1);
+}
+
+.quad-canvas {
+  width: 120px;
+  height: 90px;
+  display: block;
+  background: #000;
+  border-radius: 6px;
+}
+
+.quad-view-label {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+  color: #fff;
+  font-size: 11px;
+  text-align: center;
+  padding: 6px 4px 4px;
+  font-weight: 500;
+  border-radius: 0 0 6px 6px;
+}
+
+/* 响应式设计 */
+/* 新的响应式设计 */
+@media (max-width: 1024px) {
+  .toolbar-group {
+    gap: 16px;
+  }
+  
+  .volume-control {
+    padding: 2px 6px;
+  }
+}
+
+@media (max-width: 768px) {
+  .top-status-bar {
+    padding: 6px 12px;
+  }
+  
+  .video-title {
+    font-size: 13px;
+  }
+  
+  .bottom-controls {
+    padding: 12px;
+  }
+  
+  .playback-row {
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  
+  .playback-controls {
+    gap: 6px;
+  }
+  
+  .progress-section {
+    gap: 8px;
+  }
+  
+  .time-display {
+    font-size: 11px;
+    min-width: 38px;
+  }
+  
+  .quick-controls {
+    gap: 6px;
+  }
+  
+  .toolbar-row {
+    padding-top: 10px;
+  }
+  
+  .toolbar-group {
+    gap: 16px;
+    justify-content: space-around;
+  }
+  
+  .media-controls,
+  .view-controls,
+  .zoom-controls,
+  .function-controls,
+  .management-controls {
+    gap: 6px;
+  }
+  
+  .media-controls {
+    padding: 4px 8px;
+  }
+  
+  .control-label {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .playback-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .progress-section {
+    width: 100%;
+    order: 2;
+  }
+  
+  .playback-controls {
+    order: 1;
+    justify-content: center;
+  }
+  
+  .quick-controls {
+    order: 3;
+    justify-content: center;
+  }
+  
+  .toolbar-group {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .media-controls {
+    width: 100%;
+    justify-content: space-around;
+  }
+}
+
+@media (max-width: 1200px) {
+  .quad-view-overlay {
+    min-width: 240px;
+  }
+  
+  .quad-canvas {
+    width: 100px;
+    height: 75px;
+  }
+}
+
+@media (max-width: 768px) {
+  .quad-view-overlay {
+    top: 60px;
+    left: 10px;
+    right: 10px;
+    min-width: auto;
+    padding: 12px;
+  }
+  
+  .quad-views-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  
+  .quad-canvas {
+    width: 80px;
+    height: 60px;
+  }
+  
+  .quad-view-title {
+    font-size: 12px;
+  }
+  
+  .quad-view-label {
+    font-size: 10px;
+    padding: 4px 2px 2px;
+  }
+  
+  .quad-view-header {
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+  }
 }
 </style>
