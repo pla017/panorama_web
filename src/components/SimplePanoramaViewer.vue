@@ -5,6 +5,12 @@
       <!-- 第一行：播放控制 -->
       <div class="control-row">
         <div class="control-group">
+          <!-- 上一个视频 -->
+          <el-button @click="previousVideo" size="small" :disabled="currentVideoIndex <= 0">
+            <el-icon><ArrowLeftBold /></el-icon>
+            上一个
+          </el-button>
+
           <!-- 播放/暂停 -->
           <el-button @click="togglePlay" :type="isPlaying ? 'danger' : 'primary'" size="small">
             <el-icon>
@@ -16,11 +22,19 @@
           <!-- 快退 -->
           <el-button @click="skipBackward" size="small" :disabled="!video">
             <el-icon><DArrowLeft /></el-icon>
+            -{{ skipTime }}s
           </el-button>
           
           <!-- 快进 -->
           <el-button @click="skipForward" size="small" :disabled="!video">
             <el-icon><DArrowRight /></el-icon>
+            +{{ skipTime }}s
+          </el-button>
+
+          <!-- 下一个视频 -->
+          <el-button @click="nextVideo" size="small" :disabled="currentVideoIndex >= videoList.length - 1">
+            <el-icon><ArrowRightBold /></el-icon>
+            下一个
           </el-button>
           
           <!-- 时间显示和进度条 -->
@@ -86,6 +100,7 @@
               <el-option label="1.25x" :value="1.25" />
               <el-option label="1.5x" :value="1.5" />
               <el-option label="2x" :value="2" />
+              <el-option label="2.5x" :value="2.5" />
             </el-select>
           </div>
 
@@ -146,6 +161,12 @@
             重置视角
           </el-button>
 
+          <!-- 设置按钮 -->
+          <el-button @click="showSettingsPanel = true" size="small">
+            <el-icon><Setting /></el-icon>
+            设置
+          </el-button>
+
           <!-- 标记管理 -->
           <div class="marker-controls">
             <el-button @click="addMarker" size="small" :disabled="!video">
@@ -157,6 +178,12 @@
               管理标记
             </el-button>
           </div>
+
+          <!-- 视频列表按钮 -->
+          <el-button @click="showVideoList = true" size="small">
+            <el-icon><VideoPlay /></el-icon>
+            播放列表
+          </el-button>
         </div>
       </div>
     </div>
@@ -296,6 +323,137 @@
       </div>
     </div>
 
+    <!-- 设置面板 -->
+    <el-dialog
+      v-model="showSettingsPanel"
+      title="播放器设置"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <div class="settings-content">
+        <!-- 快进快退时长设置 -->
+        <div class="setting-group">
+          <h4>快进/快退时长</h4>
+          <el-radio-group v-model="skipTime" @change="onSkipTimeChange">
+            <el-radio :label="10">10秒</el-radio>
+            <el-radio :label="15">15秒</el-radio>
+            <el-radio :label="20">20秒</el-radio>
+            <el-radio :label="25">25秒</el-radio>
+            <el-radio :label="30">30秒</el-radio>
+          </el-radio-group>
+        </div>
+
+        <!-- 默认播放速率 -->
+        <div class="setting-group">
+          <h4>默认播放速率</h4>
+          <el-select v-model="defaultPlaybackRate" @change="onDefaultPlaybackRateChange" style="width: 120px;">
+            <el-option label="0.5x" :value="0.5" />
+            <el-option label="0.75x" :value="0.75" />
+            <el-option label="1x" :value="1" />
+            <el-option label="1.25x" :value="1.25" />
+            <el-option label="1.5x" :value="1.5" />
+            <el-option label="2x" :value="2" />
+            <el-option label="2.5x" :value="2.5" />
+          </el-select>
+        </div>
+
+        <!-- 自动播放设置 -->
+        <div class="setting-group">
+          <h4>自动播放</h4>
+          <el-switch 
+            v-model="autoPlay" 
+            @change="onAutoPlayChange"
+            active-text="开启"
+            inactive-text="关闭"
+          />
+        </div>
+
+        <!-- 视频质量设置 -->
+        <div class="setting-group">
+          <h4>视频质量</h4>
+          <el-select v-model="videoQuality" @change="onVideoQualityChange" style="width: 120px;">
+            <el-option label="自动" value="auto" />
+            <el-option label="高清" value="high" />
+            <el-option label="标清" value="medium" />
+            <el-option label="流畅" value="low" />
+          </el-select>
+        </div>
+      </div>
+      
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="resetSettings">重置默认</el-button>
+          <el-button type="primary" @click="showSettingsPanel = false">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 视频列表面板 -->
+    <el-drawer
+      v-model="showVideoList"
+      title="视频列表"
+      :size="400"
+      direction="rtl"
+    >
+      <div class="video-list-content">
+        <!-- 当前播放信息 -->
+        <div class="current-video-info">
+          <h4>当前播放</h4>
+          <div class="video-info-card">
+            <div class="video-thumbnail">
+              <canvas ref="thumbnailCanvas" width="120" height="68"></canvas>
+            </div>
+            <div class="video-details">
+              <div class="video-name">{{ currentVideo?.name || '未知视频' }}</div>
+              <div class="video-meta">
+                <span>{{ formatTime(videoDuration) }}</span>
+                <span>{{ videoInfo.width }}x{{ videoInfo.height }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 视频列表 -->
+        <div class="video-list">
+          <h4>播放列表 ({{ videoList.length }})</h4>
+          <div class="video-list-items">
+            <div 
+              v-for="(video, index) in videoList" 
+              :key="video.id"
+              :class="['video-item', { active: index === currentVideoIndex }]"
+              @click="switchToVideo(index)"
+            >
+              <div class="video-item-index">{{ index + 1 }}</div>
+              <div class="video-item-info">
+                <div class="video-item-name">{{ video.name }}</div>
+                <div class="video-item-meta">
+                  <span>{{ video.duration || '--:--' }}</span>
+                  <span>{{ video.size || '--' }}</span>
+                </div>
+              </div>
+              <div class="video-item-actions">
+                <el-button size="small" @click.stop="removeVideo(index)" type="danger" :icon="Delete">
+                  删除
+                </el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 添加视频 -->
+        <div class="add-video-section">
+          <el-upload
+            :show-file-list="false"
+            :before-upload="handleVideoUpload"
+            accept="video/*"
+            multiple
+          >
+            <el-button type="primary" :icon="Plus">添加视频</el-button>
+          </el-upload>
+        </div>
+      </div>
+    </el-drawer>
+
     <!-- 调试信息 -->
     <div class="debug-panel" v-if="showDebug">
       <h4>调试信息</h4>
@@ -360,7 +518,11 @@ import {
   Upload,
   ZoomIn,
   ZoomOut,
-  Aim
+  Aim,
+  Setting,
+  ArrowLeftBold,
+  ArrowRightBold,
+  Delete
 } from '@element-plus/icons-vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
@@ -369,6 +531,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 const containerRef = ref<HTMLDivElement>()
 const canvasRef = ref<HTMLCanvasElement>()
 const previewCanvas = ref<HTMLCanvasElement>()
+const thumbnailCanvas = ref<HTMLCanvasElement>()
 
 // 状态管理
 const loading = ref(true)
@@ -385,6 +548,41 @@ const playbackRate = ref(1)
 const volume = ref(100)
 const isMuted = ref(true) // 默认静音
 const skipTime = ref(10) // 快进快退时间（秒）
+
+// 新增功能状态
+const showSettingsPanel = ref(false)
+const showVideoList = ref(false)
+const defaultPlaybackRate = ref(1)
+const autoPlay = ref(false)
+const videoQuality = ref('auto')
+
+// 视频列表管理
+interface VideoItem {
+  id: string
+  name: string
+  url: string
+  duration?: string
+  size?: string
+}
+
+const videoList = ref<VideoItem[]>([
+  {
+    id: '1',
+    name: 'stitched_output.mp4',
+    url: '/Out/stitched_output.mp4',
+    duration: '--:--',
+    size: '--'
+  }
+])
+const currentVideoIndex = ref(0)
+const currentVideo = ref<VideoItem | null>(videoList.value[0])
+
+// 视频信息
+const videoInfo = ref({
+  width: 0,
+  height: 0,
+  fps: 30
+})
 
 // 进度标记相关
 interface ProgressMarker {
@@ -1063,6 +1261,116 @@ const retry = () => {
   init()
 }
 
+// 新增功能方法
+// 视频导航
+const previousVideo = () => {
+  if (currentVideoIndex.value > 0) {
+    switchToVideo(currentVideoIndex.value - 1)
+  }
+}
+
+const nextVideo = () => {
+  if (currentVideoIndex.value < videoList.value.length - 1) {
+    switchToVideo(currentVideoIndex.value + 1)
+  }
+}
+
+const switchToVideo = async (index: number) => {
+  if (index < 0 || index >= videoList.value.length) return
+  
+  const targetVideo = videoList.value[index]
+  if (!targetVideo) return
+  
+  try {
+    // 暂停当前视频
+    if (video) {
+      video.pause()
+    }
+    
+    // 更新当前视频信息
+    currentVideoIndex.value = index
+    currentVideo.value = targetVideo
+    videoUrl.value = targetVideo.url
+    
+    // 重新初始化视频
+    loading.value = true
+    status.value = '切换视频'
+    statusMessage.value = `正在加载: ${targetVideo.name}`
+    
+    await init()
+    
+    ElMessage.success(`已切换到: ${targetVideo.name}`)
+  } catch (error) {
+    console.error('切换视频失败:', error)
+    ElMessage.error('切换视频失败')
+  }
+}
+
+// 设置相关方法
+const onSkipTimeChange = (value: number) => {
+  skipTime.value = value
+  ElMessage.info(`快进/快退时长已设置为 ${value} 秒`)
+}
+
+const onDefaultPlaybackRateChange = (rate: number) => {
+  defaultPlaybackRate.value = rate
+  ElMessage.info(`默认播放速率已设置为 ${rate}x`)
+}
+
+const onAutoPlayChange = (enabled: boolean) => {
+  autoPlay.value = enabled
+  ElMessage.info(enabled ? '已开启自动播放' : '已关闭自动播放')
+}
+
+const onVideoQualityChange = (quality: string) => {
+  videoQuality.value = quality
+  ElMessage.info(`视频质量已设置为: ${quality}`)
+}
+
+const resetSettings = () => {
+  skipTime.value = 10
+  defaultPlaybackRate.value = 1
+  autoPlay.value = false
+  videoQuality.value = 'auto'
+  ElMessage.success('设置已重置为默认值')
+}
+
+// 视频列表管理
+const handleVideoUpload = (file: File) => {
+  const videoUrl = URL.createObjectURL(file)
+  const newVideo: VideoItem = {
+    id: Date.now().toString(),
+    name: file.name,
+    url: videoUrl,
+    size: (file.size / 1024 / 1024).toFixed(2) + 'MB'
+  }
+  
+  videoList.value.push(newVideo)
+  ElMessage.success(`已添加视频: ${file.name}`)
+  return false // 阻止上传
+}
+
+const removeVideo = (index: number) => {
+  if (index < 0 || index >= videoList.value.length) return
+  
+  const video = videoList.value[index]
+  videoList.value.splice(index, 1)
+  
+  // 如果删除的是当前播放的视频，切换到第一个
+  if (index === currentVideoIndex.value) {
+    if (videoList.value.length > 0) {
+      switchToVideo(0)
+    } else {
+      currentVideoIndex.value = -1
+      currentVideo.value = null
+    }
+  } else if (index < currentVideoIndex.value) {
+    currentVideoIndex.value--
+  }
+  
+  ElMessage.success(`已删除视频: ${video.name}`)
+}
+
 // 鼠标事件
 const onMouseDown = (event: MouseEvent) => {
   isMouseDown.value = true
@@ -1546,5 +1854,176 @@ function getVideoErrorMessage(code: number): string {
 .empty-markers {
   text-align: center;
   padding: 40px 20px;
+}
+
+/* 设置面板样式 */
+.settings-content {
+  padding: 16px 0;
+}
+
+.setting-group {
+  margin-bottom: 24px;
+}
+
+.setting-group h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.setting-group .el-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.dialog-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* 视频列表样式 */
+.video-list-content {
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.current-video-info {
+  margin-bottom: 24px;
+}
+
+.current-video-info h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.video-info-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.video-thumbnail {
+  flex-shrink: 0;
+}
+
+.video-thumbnail canvas {
+  border-radius: 4px;
+  background: #000;
+}
+
+.video-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.video-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.video-meta {
+  font-size: 12px;
+  color: #666;
+  display: flex;
+  gap: 12px;
+}
+
+.video-list {
+  flex: 1;
+  margin-bottom: 16px;
+}
+
+.video-list h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.video-list-items {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.video-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 8px;
+}
+
+.video-item:hover {
+  background: #f0f0f0;
+}
+
+.video-item.active {
+  background: #e6f7ff;
+  border: 1px solid #1890ff;
+}
+
+.video-item-index {
+  width: 24px;
+  height: 24px;
+  background: #666;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.video-item.active .video-item-index {
+  background: #1890ff;
+}
+
+.video-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.video-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.video-item-meta {
+  font-size: 12px;
+  color: #666;
+  display: flex;
+  gap: 12px;
+}
+
+.video-item-actions {
+  flex-shrink: 0;
+}
+
+.add-video-section {
+  padding-top: 16px;
+  border-top: 1px solid #eee;
 }
 </style>
