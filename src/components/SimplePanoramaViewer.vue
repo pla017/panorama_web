@@ -502,19 +502,7 @@
         <p><strong>四视角状态:</strong> {{ showQuadView ? '显示' : '隐藏' }} ({{ quadRenderers.length }} 渲染器)</p>
         <p><strong>Three.js场景:</strong> {{ sceneInfo }}</p>
         
-        <div class="debug-controls">
-          <h5>调试控制</h5>
-          <div class="debug-buttons">
-            <el-button size="small" @click="testSwitchView(0)">测试正面</el-button>
-            <el-button size="small" @click="testSwitchView(1)">测试右侧</el-button>
-            <el-button size="small" @click="testSwitchView(2)">测试背面</el-button>
-            <el-button size="small" @click="testSwitchView(3)">测试左侧</el-button>
-          </div>
-          <div class="debug-buttons">
-            <el-button size="small" @click="logCameraState">输出相机状态</el-button>
-            <el-button size="small" @click="resetCameraManually">手动重置相机</el-button>
-          </div>
-        </div>
+        
       </div>
       
       <h5>快捷键</h5>
@@ -1763,16 +1751,8 @@ const onWheel = (event: WheelEvent) => {
     camera.fov = clampedFOV
     camera.updateProjectionMatrix()
     
-    // 显示缩放提示
-    const zoomLevel = Math.round(((defaultFOV - clampedFOV) / (defaultFOV - minFOV)) * 100)
-    if (clampedFOV < defaultFOV) {
-      ElMessage.info(`放大 ${zoomLevel}%`)
-    } else if (clampedFOV > defaultFOV) {
-      const shrinkLevel = Math.round(((clampedFOV - defaultFOV) / (maxFOV - defaultFOV)) * 100)
-      ElMessage.info(`缩小 ${shrinkLevel}%`)
-    } else {
-      ElMessage.info('原始尺寸')
-    }
+    // 同步四视角相机FOV
+    syncQuadCameras()
   }
 }
 

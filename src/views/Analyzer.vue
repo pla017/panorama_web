@@ -111,12 +111,7 @@
 
         <!-- Review 页面 - 全景视频查看器 -->
         <div v-if="currentMenu === 'review'" class="content-panel full-height">
-          <el-tabs v-model="reviewTab" type="card">
-            <el-tab-pane label="全景查看器" name="simple">
-              <SimplePanoramaViewer />
-            </el-tab-pane>
-          
-          </el-tabs>
+          <SimplePanoramaViewer />
         </div>
 
         <!-- Analysis 页面 -->
