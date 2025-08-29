@@ -318,10 +318,10 @@
 
           <!-- 功能按钮 -->
           <div class="function-controls">
-            <el-button @click="toggleQuadView" size="small" :type="showQuadView ? 'primary' : 'default'">
+            <!-- <el-button @click="toggleQuadView" size="small" :type="showQuadView ? 'primary' : 'default'">
               <el-icon><Grid /></el-icon>
               {{ showQuadView ? '单视角' : '四视角' }}
-            </el-button>
+            </el-button> -->
             <el-button @click="captureScreenshot" size="small" :disabled="!video">
               <el-icon><Camera /></el-icon>
               截图
