@@ -3,14 +3,21 @@
     <!-- 顶部状态栏 -->
     <div class="top-status-bar">
       <div class="video-title">{{ currentVideo?.name || '全景视频播放器' }}</div>
+      <div class="view-mode-tabs">
+        <el-tabs v-model="activeViewMode" @tab-click="switchViewMode">
+          <el-tab-pane label="全景视频" name="panorama"></el-tab-pane>
+          <el-tab-pane label="3D模型" name="model3d"></el-tab-pane>
+        </el-tabs>
+      </div>
       <div class="status-info">
         <el-tag :type="statusType" size="small">{{ status }}</el-tag>
       </div>
     </div>
 
-    <!-- 标记管理对话框 -->
+    <!-- 标记管理对话框 - 只在全景视频模式下显示 -->
     <el-dialog 
       v-model="showMarkerManager" 
+      v-if="activeViewMode === 'panorama'"
       title="进度标记管理" 
       width="600px"
     >
@@ -72,9 +79,10 @@
       </div>
     </el-dialog>
 
-    <!-- 添加/编辑标记对话框 -->
+    <!-- 添加/编辑标记对话框 - 只在全景视频模式下显示 -->
     <el-dialog 
       v-model="showMarkerDialog" 
+      v-if="activeViewMode === 'panorama'"
       :title="editingMarker ? '编辑标记' : '添加标记'" 
       width="400px"
     >
@@ -116,7 +124,9 @@
 
     <!-- 主要视角容器 -->
     <div class="main-viewer-container">
+      <!-- 全景视频视图 -->
       <div 
+        v-show="activeViewMode === 'panorama'"
         ref="containerRef" 
         class="viewer-container"
         @mousedown="onMouseDown"
@@ -169,10 +179,15 @@
           </div>
         </div>
       </div>
+      
+      <!-- 3D模型视图 -->
+      <div v-show="activeViewMode === 'model3d'" class="model3d-container">
+        <Model3DViewer />
+      </div>
     </div>
 
-    <!-- 底部控制栏 -->
-    <div class="bottom-controls">
+    <!-- 底部控制栏 - 只在全景视频模式下显示 -->
+    <div v-show="activeViewMode === 'panorama'" class="bottom-controls">
       <!-- 第一行：播放控制和进度条 -->
       <div class="playback-row">
         <!-- 播放控制组 -->
@@ -351,9 +366,10 @@
       </div>
     </div>
 
-    <!-- 设置面板 -->
+    <!-- 设置面板 - 只在全景视频模式下显示 -->
     <el-dialog
       v-model="showSettingsPanel"
+      v-if="activeViewMode === 'panorama'"
       title="播放器设置"
       width="500px"
       :close-on-click-modal="false"
@@ -416,9 +432,10 @@
       </template>
     </el-dialog>
 
-    <!-- 视频列表面板 -->
+    <!-- 视频列表面板 - 只在全景视频模式下显示 -->
     <el-drawer
       v-model="showVideoList"
+      v-if="activeViewMode === 'panorama'"
       title="视频列表"
       :size="400"
       direction="rtl"
@@ -524,7 +541,7 @@
     </div>
     
     <el-button 
-      v-if="!showDebug" 
+      v-if="!showDebug && activeViewMode === 'panorama'" 
       @click="showDebug = true" 
       size="small" 
       class="debug-toggle"
@@ -537,6 +554,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import Model3DViewer from './Model3DViewer.vue'
 import { 
   VideoPlay, 
   VideoPause, 
@@ -577,6 +595,9 @@ const status = ref('初始化')
 const statusMessage = ref('准备加载全景视频...')
 const statusType = ref<'info' | 'success' | 'warning' | 'danger'>('info')
 const loadingMessage = ref('正在初始化...')
+
+// 视图模式切换
+const activeViewMode = ref<'panorama' | 'model3d'>('panorama')
 
 // 播放控制
 const isPlaying = ref(false)
@@ -1384,6 +1405,23 @@ const previousVideo = () => {
 const nextVideo = () => {
   if (currentVideoIndex.value < videoList.value.length - 1) {
     switchToVideo(currentVideoIndex.value + 1)
+  }
+}
+
+// 视图模式切换
+const switchViewMode = (tab: any) => {
+  const mode = tab.props.name as 'panorama' | 'model3d'
+  activeViewMode.value = mode
+  
+  if (mode === 'panorama') {
+    ElMessage.info('已切换到全景视频模式')
+  } else if (mode === 'model3d') {
+    // 切换到3D模式时，关闭所有视频相关的面板
+    showSettingsPanel.value = false
+    showVideoList.value = false
+    showMarkerManager.value = false
+    showMarkerDialog.value = false
+    ElMessage.info('已切换到3D模型模式')
   }
 }
 
@@ -2616,6 +2654,43 @@ function getVideoErrorMessage(code: number): string {
 .main-viewer-container {
   flex: 1;
   position: relative;
+}
+
+/* 3D模型容器样式 */
+.model3d-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* 顶部状态栏中的选项卡样式 */
+.view-mode-tabs {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.view-mode-tabs :deep(.el-tabs__header) {
+  margin: 0;
+}
+
+.view-mode-tabs :deep(.el-tabs__nav-wrap) {
+  background: transparent;
+}
+
+.view-mode-tabs :deep(.el-tabs__item) {
+  padding: 0 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.view-mode-tabs :deep(.el-tabs__item.is-active) {
+  color: #409eff;
+}
+
+.view-mode-tabs :deep(.el-tabs__active-bar) {
+  background-color: #409eff;
 }
 
 /* 四视角浮动面板样式 */
