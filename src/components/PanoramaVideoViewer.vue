@@ -29,6 +29,7 @@
           :max="videoDuration"
           :format-tooltip="formatTime"
           @change="seekVideo"
+          @input="handleSliderInput"
           style="width: 200px; margin: 0 10px;"
         />
         <span class="time-display">{{ formatTime(videoProgress) }} / {{ formatTime(videoDuration) }}</span>
@@ -190,7 +191,39 @@ const toggleAutoRotate = () => {
   }
 }
 
+// 拖动处理变量
+let isDragging = false
+let lastUpdateTime = 0
+let pendingUpdate: number | null = null
+const UPDATE_THROTTLE = 50 // 50ms 节流，提高响应性
+
+const handleSliderInput = (value: number) => {
+  // 拖动过程中实时更新视频画面
+  isDragging = true
+  
+  // 使用requestAnimationFrame + 节流机制，确保流畅更新
+  const now = Date.now()
+  if (now - lastUpdateTime > UPDATE_THROTTLE) {
+    lastUpdateTime = now
+    
+    // 取消之前的待处理更新
+    if (pendingUpdate) {
+      cancelAnimationFrame(pendingUpdate)
+    }
+    
+    // 使用 requestAnimationFrame 确保在下一帧更新
+    pendingUpdate = requestAnimationFrame(() => {
+      if (panoramaVideoViewer) {
+        panoramaVideoViewer.seekToImmediate(value)
+      }
+      pendingUpdate = null
+    })
+  }
+}
+
 const seekVideo = (value: number) => {
+  // 拖拽结束时确保最终位置准确
+  isDragging = false
   if (panoramaVideoViewer) {
     panoramaVideoViewer.seekTo(value)
   }

@@ -5,6 +5,7 @@ export interface PanoramaVideoViewer {
   play: () => void
   pause: () => void
   seekTo: (time: number) => void
+  seekToImmediate: (time: number) => void
   setAutoRotate: (enabled: boolean) => void
   rotate: (deltaX: number, deltaY: number) => void
   zoom: (delta: number) => void
@@ -52,7 +53,7 @@ export async function initPanoramaVideoViewer(
   const videoTexture = new THREE.VideoTexture(video)
   videoTexture.minFilter = THREE.LinearFilter
   videoTexture.magFilter = THREE.LinearFilter
-  videoTexture.format = THREE.RGBFormat
+  videoTexture.format = THREE.RGBAFormat
 
   // 创建材质和网格
   const material = new THREE.MeshBasicMaterial({ map: videoTexture })
@@ -154,7 +155,7 @@ export async function initPanoramaVideoViewer(
         resolve()
       }
 
-      const handleLoadError = (event: Event) => {
+      const handleLoadError = () => {
         video.removeEventListener('canplay', handleLoad)
         video.removeEventListener('error', handleLoadError)
         reject(new Error('视频加载失败'))
@@ -192,14 +193,29 @@ export async function initPanoramaVideoViewer(
     }
   }
 
+  const seekToImmediate = (time: number) => {
+    if (video.duration && time >= 0 && time <= video.duration) {
+      video.currentTime = time
+      // 立即更新视频纹理
+      videoTexture.needsUpdate = true
+      // 立即渲染一帧
+      renderer.render(scene, camera)
+    }
+  }
+
   const setAutoRotate = (enabled: boolean) => {
     controls.autoRotate = enabled
   }
 
   const rotate = (deltaX: number, deltaY: number) => {
-    // 通过OrbitControls处理旋转
-    controls.rotateLeft(deltaX)
-    controls.rotateUp(deltaY)
+    // 通过调整相机旋转角度实现旋转
+    const spherical = new THREE.Spherical()
+    spherical.setFromVector3(camera.position)
+    spherical.theta += deltaX
+    spherical.phi += deltaY
+    spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi))
+    camera.position.setFromSpherical(spherical)
+    camera.lookAt(0, 0, 0)
   }
 
   const zoom = (delta: number) => {
@@ -266,6 +282,7 @@ export async function initPanoramaVideoViewer(
     play,
     pause,
     seekTo,
+    seekToImmediate,
     setAutoRotate,
     rotate,
     zoom,

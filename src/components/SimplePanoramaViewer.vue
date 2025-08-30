@@ -1220,17 +1220,63 @@ const deleteMarker = (markerId: string) => {
 
 // 滑块拖拽处理
 let isDragging = false
+let lastUpdateTime = 0
+let pendingUpdate: number | null = null
+const UPDATE_THROTTLE = 50 // 50ms 节流，提高响应性
 
 const handleSliderInput = (value: number) => {
-  // 拖拽过程中只更新显示时间，不跳转视频
+  // 拖拽过程中实时更新视频画面
   isDragging = true
   previewTime.value = value
+  currentTime.value = value
+  
+  // 使用requestAnimationFrame + 节流机制，确保流畅更新
+  const now = Date.now()
+  if (now - lastUpdateTime > UPDATE_THROTTLE) {
+    lastUpdateTime = now
+    
+    // 取消之前的待处理更新
+    if (pendingUpdate) {
+      cancelAnimationFrame(pendingUpdate)
+    }
+    
+    // 使用 requestAnimationFrame 确保在下一帧更新
+    pendingUpdate = requestAnimationFrame(() => {
+      seekToImmediate(value)
+      pendingUpdate = null
+    })
+  }
 }
 
 const handleSliderChange = (value: number) => {
-  // 拖拽结束时才跳转视频
+  // 拖拽结束时确保最终位置准确
   isDragging = false
   seekTo(value)
+}
+
+// 立即跳转函数，用于拖动时的实时更新
+const seekToImmediate = (time: number) => {
+  if (!video) return
+  
+  const clampedTime = Math.max(0, Math.min(time, videoDuration.value))
+  
+  try {
+    // 直接设置视频时间，不等待 seeked 事件
+    video.currentTime = clampedTime
+    
+    // 立即更新视频纹理
+    if (videoTexture) {
+      videoTexture.needsUpdate = true
+    }
+    
+    // 立即渲染一帧
+    if (renderer && scene && camera) {
+      renderer.render(scene, camera)
+    }
+    
+  } catch (error) {
+    console.error('实时跳转失败:', error)
+  }
 }
 
 // 进度悬停处理
@@ -2081,21 +2127,44 @@ function getVideoErrorMessage(code: number): string {
 }
 
 .progress-slider :deep(.el-slider__runway) {
-  height: 6px;
+  height: 8px;
   background-color: #f0f2f5;
-  border-radius: 3px;
+  border-radius: 4px;
+  transition: height 0.2s ease;
+}
+
+.progress-slider:hover :deep(.el-slider__runway) {
+  height: 10px;
 }
 
 .progress-slider :deep(.el-slider__bar) {
   background: linear-gradient(90deg, #409eff 0%, #67c23a 100%);
-  border-radius: 3px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
 }
 
 .progress-slider :deep(.el-slider__button) {
-  width: 16px;
-  height: 16px;
-  border: 2px solid #409eff;
+  width: 18px;
+  height: 18px;
+  border: 3px solid #409eff;
   background-color: white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+  cursor: grab;
+}
+
+.progress-slider :deep(.el-slider__button):hover {
+  width: 20px;
+  height: 20px;
+  border-color: #66b3ff;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.progress-slider :deep(.el-slider__button):active {
+  cursor: grabbing;
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.4);
 }
 
 .progress-markers {
