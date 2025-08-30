@@ -139,7 +139,7 @@
         <!-- 加载状态 -->
         <div v-if="loading" class="overlay">
           <div class="loading-content">
-            <el-loading-spinner size="large" />
+            <el-icon class="is-loading" style="font-size: 32px;"><Loading /></el-icon>
             <p class="mt-4 text-white">{{ loadingMessage }}</p>
           </div>
         </div>
@@ -577,7 +577,8 @@ import {
   ArrowRightBold,
   Delete,
   Grid,
-  Close
+  Close,
+  Loading
 } from '@element-plus/icons-vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
@@ -2920,6 +2921,19 @@ function getVideoErrorMessage(code: number): string {
   .quad-view-header {
     margin-bottom: 8px;
     padding-bottom: 6px;
+  }
+}
+
+.is-loading {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 </style>

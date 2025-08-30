@@ -50,7 +50,7 @@
       
       <!-- 加载状态 -->
       <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-        <el-loading-spinner size="large" />
+        <el-icon class="is-loading" style="font-size: 32px;"><Loading /></el-icon>
         <span class="ml-4 text-white text-lg">正在加载全景图...</span>
       </div>
     </div>
@@ -75,7 +75,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePanoramaStore } from '@/stores/panorama'
-import { ArrowLeft, Refresh, Aim } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Aim, Loading } from '@element-plus/icons-vue'
 import { initPanoramaViewer, type PanoramaViewer } from '@/utils/panorama'
 
 const router = useRouter()
@@ -195,5 +195,18 @@ const onWheel = (event: WheelEvent) => {
 .control-bar,
 .info-bar {
   backdrop-filter: blur(10px);
+}
+
+.is-loading {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

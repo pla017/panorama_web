@@ -49,7 +49,7 @@
       
       <!-- 加载状态 -->
       <div v-if="loading" class="loading-overlay">
-        <el-loading-spinner size="large" />
+        <el-icon class="is-loading" style="font-size: 32px;"><Loading /></el-icon>
         <span class="loading-text">正在加载全景视频...</span>
       </div>
 
@@ -90,7 +90,8 @@ import {
   VideoPlay, 
   VideoPause, 
   Refresh, 
-  Warning 
+  Warning,
+  Loading
 } from '@element-plus/icons-vue'
 import { initPanoramaVideoViewer, type PanoramaVideoViewer } from '@/utils/panoramaVideo'
 
@@ -399,6 +400,19 @@ const onWheel = (event: WheelEvent) => {
 
 .info-value {
   color: #333;
+}
+
+.is-loading {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 响应式设计 */
