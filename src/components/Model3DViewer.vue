@@ -167,6 +167,33 @@
                   >↓</el-button
                 >
               </div>
+             
+            </div>
+            
+            <!-- 微调参数控制 -->
+            <div class="fine-tune-settings">
+              <div class="setting-item">
+                <span class="setting-label">旋转速度:</span>
+                <el-slider
+                  v-model="rotationSpeed"
+                  :min="0.1"
+                  :max="5.0"
+                  :step="0.1"
+                  style="width: 80px"
+                />
+                <span class="value-display">{{ rotationSpeed }}</span>
+              </div>
+              <div class="setting-item">
+                <span class="setting-label">平移距离:</span>
+                <el-slider
+                  v-model="panDistance"
+                  :min="0.1"
+                  :max="5.0"
+                  :step="0.1"
+                  style="width: 80px"
+                />
+                <span class="setting-label">{{ panDistance }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -420,8 +447,8 @@ const showContour = ref(false);
 
 // 位置微调
 const fineTuneMode = ref(false);
-const rotationSpeed = ref(1.0);
-const panDistance = ref(1.0);
+const rotationSpeed = ref(2.0); // 增加默认旋转速度
+const panDistance = ref(2.0); // 增加默认平移距离
 
 // 水平直径测量
 const diameterMeasurement = reactive({
@@ -1453,21 +1480,31 @@ const getDisplayModeName = (mode: string): string => {
 // 位置微调
 const toggleFineTuneMode = () => {
   fineTuneMode.value = !fineTuneMode.value;
+  console.log("🎮 微调模式切换:", fineTuneMode.value);
   ElMessage.info(
     fineTuneMode.value ? "已开启位置微调模式" : "已关闭位置微调模式"
   );
 };
 
 const adjustView = (direction: string) => {
-  if (!camera || !controls) return;
+  console.log("🎮 微调操作:", direction);
+  
+  if (!camera || !controls) {
+    console.error("❌ 相机或控制器未初始化");
+    return;
+  }
 
-  const speed = rotationSpeed.value * 0.1;
-  const distance = panDistance.value * 0.5;
+  const speed = rotationSpeed.value * 0.5; // 增加旋转速度
+  const distance = panDistance.value * 1.0; // 增加平移距离
+  
+  console.log("📊 微调参数:", { direction, speed, distance, displayMode: displayMode.value });
 
   switch (direction) {
     case "up":
+      console.log("⬆️ 向上调整");
       if (displayMode.value === "section") {
         camera.position.y += distance;
+        console.log("📷 剖面模式：相机Y位置增加", distance);
       } else {
         // 手动旋转相机
         const spherical = new THREE.Spherical();
@@ -1478,11 +1515,14 @@ const adjustView = (direction: string) => {
           new THREE.Vector3().setFromSpherical(spherical).add(controls.target)
         );
         camera.lookAt(controls.target);
+        console.log("📷 旋转模式：相机位置更新", camera.position);
       }
       break;
     case "down":
+      console.log("⬇️ 向下调整");
       if (displayMode.value === "section") {
         camera.position.y -= distance;
+        console.log("📷 剖面模式：相机Y位置减少", distance);
       } else {
         // 手动旋转相机
         const spherical = new THREE.Spherical();
@@ -1493,9 +1533,11 @@ const adjustView = (direction: string) => {
           new THREE.Vector3().setFromSpherical(spherical).add(controls.target)
         );
         camera.lookAt(controls.target);
+        console.log("📷 旋转模式：相机位置更新", camera.position);
       }
       break;
     case "left":
+      console.log("⬅️ 向左调整");
       if (displayMode.value !== "section") {
         // 手动旋转相机
         const spherical = new THREE.Spherical();
@@ -1505,9 +1547,13 @@ const adjustView = (direction: string) => {
           new THREE.Vector3().setFromSpherical(spherical).add(controls.target)
         );
         camera.lookAt(controls.target);
+        console.log("📷 旋转模式：相机位置更新", camera.position);
+      } else {
+        console.log("⚠️ 剖面模式：不支持左右旋转");
       }
       break;
     case "right":
+      console.log("➡️ 向右调整");
       if (displayMode.value !== "section") {
         // 手动旋转相机
         const spherical = new THREE.Spherical();
@@ -1517,15 +1563,25 @@ const adjustView = (direction: string) => {
           new THREE.Vector3().setFromSpherical(spherical).add(controls.target)
         );
         camera.lookAt(controls.target);
+        console.log("📷 旋转模式：相机位置更新", camera.position);
+      } else {
+        console.log("⚠️ 剖面模式：不支持左右旋转");
       }
       break;
     case "center":
+      console.log("🎯 重置到中心");
       // 重置到中心
       controls.target.set(0, 0, 0);
+      console.log("📷 目标点重置", controls.target);
       break;
   }
 
   controls.update();
+  
+  // 强制重新渲染场景
+  if (renderer && scene && camera) {
+    renderer.render(scene, camera);
+  }
 };
 
 const toggleMeasurementMode = () => {
@@ -1987,6 +2043,23 @@ const debugInfo = () => {
   ElMessage.info("调试信息已输出到控制台");
 };
 
+// 测试微调功能
+const testAdjustView = () => {
+  console.log("🧪 测试微调功能");
+  console.log("当前状态:", {
+    fineTuneMode: fineTuneMode.value,
+    hasCamera: !!camera,
+    hasControls: !!controls,
+    cameraPosition: camera?.position,
+    controlsTarget: controls?.target
+  });
+  
+  // 测试向上调整
+  adjustView('up');
+  
+  ElMessage.success("测试完成，请查看控制台");
+};
+
 const cleanup = () => {
   if (animationId) {
     cancelAnimationFrame(animationId);
@@ -2319,6 +2392,30 @@ const cleanup = () => {
 
 .setting-item:last-child {
   margin-bottom: 0;
+}
+
+/* 微调设置样式 */
+.fine-tune-settings {
+  margin-top: 12px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.fine-tune-settings .setting-item {
+  margin-bottom: 8px;
+}
+
+.fine-tune-settings .setting-item:last-child {
+  margin-bottom: 0;
+}
+
+.fine-tune-settings .setting-label {
+  font-size: 12px;
+  color: #666;
+  min-width: 60px;
+  display: inline-block;
 }
 
 /* 直径测量控制面板 */
