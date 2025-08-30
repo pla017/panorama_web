@@ -51,19 +51,19 @@
         </el-button-group>
       </div>
 
-      <!-- 显示模式 -->
-      <div class="control-section">
-        <span class="section-label">模式:</span>
-        <el-radio-group
-          v-model="displayMode"
-          @change="changeDisplayMode"
-          size="small"
-        >
-          <el-radio-button value="stereo">立体</el-radio-button>
-          <el-radio-button value="side">侧面</el-radio-button>
-          <el-radio-button value="section">剖面</el-radio-button>
-        </el-radio-group>
-      </div>
+              <!-- 视图模式 -->
+        <div class="control-section">
+          <span class="section-label">视图模式:</span>
+          <el-radio-group
+            v-model="displayMode"
+            @change="changeDisplayMode"
+            size="small"
+          >
+            <el-radio-button value="stereo">3D View 立体模式</el-radio-button>
+            <el-radio-button value="side">Side View 侧面模式</el-radio-button>
+            <el-radio-button value="section">Section View 剖面模式</el-radio-button>
+          </el-radio-group>
+        </div>
 
       <!-- 缩略图和轮廓控制 -->
       <div class="control-section">
@@ -94,12 +94,12 @@
           >
             线框
           </el-button>
-          <el-button
+          <!-- <el-button
             @click="togglePoints"
             :type="showPoints ? 'primary' : 'default'"
           >
             点
-          </el-button>
+          </el-button> -->
         </el-button-group>
       </div>
 
@@ -201,7 +201,7 @@
         <!-- 测量工具 -->
         <div class="tool-panel">
           <div class="panel-header">
-            <h4>测量工具</h4>
+            <h4>测量工具 Measurement Tools</h4>
             <el-button
               @click="toggleMeasurementMode"
               :type="measurementMode ? 'primary' : 'default'"
@@ -224,12 +224,84 @@
               </div>
             </div>
 
+            <!-- 测量工具列表 -->
+            <div class="measurement-tools-list">
+              <div class="measurement-tool-item" @click="selectMeasureTool('contour')">
+                <div class="tool-icon">📏</div>
+                <div class="tool-info">
+                  <div class="tool-name">轮廓测量 Contour Measure</div>
+                  <div class="tool-value">{{ contourMeasurement.diameter }}mm</div>
+                </div>
+              </div>
+              
+              <div class="measurement-tool-item" @click="selectMeasureTool('distance')">
+                <div class="tool-icon">📐</div>
+                <div class="tool-info">
+                  <div class="tool-name">直线测量 Distance Measure</div>
+                  <div class="tool-value">{{ distanceMeasurement.distance.toFixed(1) }}m, {{ distanceMeasurement.percentage }}%</div>
+                </div>
+              </div>
+              
+              <div class="measurement-tool-item" @click="selectMeasureTool('diameter')">
+                <div class="tool-icon">⭕</div>
+                <div class="tool-info">
+                  <div class="tool-name">直径测量 Diameter Measure</div>
+                  <div class="tool-value">{{ diameterMeasurement.diameter }}mm</div>
+                </div>
+              </div>
+              
+              <div class="measurement-tool-item" @click="selectMeasureTool('area')">
+                <div class="tool-icon">📦</div>
+                <div class="tool-info">
+                  <div class="tool-name">面积测量 Area Measure</div>
+                  <div class="tool-value">
+                    面积1: {{ areaMeasurement.areaValues[0]?.toFixed(2) || '0.00' }}m²
+                    <span v-if="areaMeasurement.areaValues.length > 1">
+                      , 面积2: {{ areaMeasurement.areaValues[1]?.toFixed(2) }}m²
+                    </span>
+                    <span v-if="areaMeasurement.areas.length === 2">
+                      , 重叠: {{ areaMeasurement.percentage.toFixed(2) }}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="measurement-tool-item" @click="selectMeasureTool('angle')">
+                <div class="tool-icon">📐</div>
+                <div class="tool-info">
+                  <div class="tool-name">角度测量 Angle Measure</div>
+                  <div class="tool-value">{{ angleMeasurement.angle.toFixed(1) }}°</div>
+                </div>
+              </div>
+            </div>
+
             <el-tabs v-model="activeMeasureTool" size="small" type="card">
+              <el-tab-pane label="轮廓" name="contour"></el-tab-pane>
               <el-tab-pane label="距离" name="distance"></el-tab-pane>
+              <el-tab-pane label="直径" name="diameter"></el-tab-pane>
               <el-tab-pane label="面积" name="area"></el-tab-pane>
               <el-tab-pane label="角度" name="angle"></el-tab-pane>
-              <el-tab-pane label="直径" name="diameter"></el-tab-pane>
             </el-tabs>
+
+            <!-- 轮廓测量控制 -->
+            <div
+              v-if="activeMeasureTool === 'contour'"
+              class="contour-controls"
+            >
+              <el-button
+                @click="toggleContourMeasurement"
+                :type="contourMeasurement.enabled ? 'primary' : 'default'"
+                size="small"
+              >
+                {{
+                  contourMeasurement.enabled ? "关闭轮廓测量" : "开启轮廓测量"
+                }}
+              </el-button>
+              <div v-if="contourMeasurement.enabled" class="contour-info">
+                <p>点击触发黄线标记，可拖动</p>
+                <p>轮廓: {{ contourMeasurement.diameter }}mm</p>
+              </div>
+            </div>
 
             <!-- 水平直径测量控制 -->
             <div
@@ -246,7 +318,7 @@
                 }}
               </el-button>
               <div v-if="diameterMeasurement.enabled" class="diameter-info">
-                <p>拖动测量线调整位置</p>
+                <p>随鼠标滚动圆大小变化动态直径</p>
                 <p>直径: {{ diameterMeasurement.diameter.toFixed(1) }}mm</p>
               </div>
             </div>
@@ -258,6 +330,19 @@
               <el-button @click="saveMeasurements" type="primary" size="small"
                 >保存</el-button
               >
+            </div>
+            
+            <!-- 调试工具 -->
+            <div class="debug-tools">
+              <el-button @click="debugInfo" size="small" type="info">
+                调试信息
+              </el-button>
+              <el-button @click="testThumbnailSync" size="small" type="warning">
+                测试同步
+              </el-button>
+              <el-button @click="checkControlsStatus" size="small" type="error">
+                检查控制器状态
+              </el-button>
             </div>
           </div>
         </div>
@@ -287,8 +372,14 @@
       <!-- 右侧3D渲染区域 -->
       <div class="viewer-layout">
         <!-- 主窗口 -->
-        <div ref="modelContainer" class="model-container main-viewer">
+        <div ref="modelContainer" class="model-container main-viewer" :class="{ 'measurement-mode': measurementMode }">
           <canvas ref="modelCanvas" class="model-canvas"></canvas>
+          
+          <!-- 测量模式提示 -->
+          <div v-if="measurementMode" class="measurement-mode-indicator">
+            <el-icon><Aim /></el-icon>
+            <span>测量模式 - 3D拖动已禁用</span>
+          </div>
 
           <!-- 自动贴合实时预览光标 -->
           <div
@@ -318,7 +409,7 @@
             <div class="marker-label">{{ index + 1 }}</div>
           </div>
 
-          <!-- 水平直径测量线 -->
+          <!-- 整体水平直径测量线 -->
           <div v-if="diameterMeasurement.enabled" class="diameter-measurement">
             <div
               class="diameter-line"
@@ -330,8 +421,8 @@
               }"
               @mousedown="startDragDiameter"
             >
-              <div class="diameter-handle left"></div>
-              <div class="diameter-handle right"></div>
+              <div class="diameter-handle left" @mousedown.stop="startDragDiameter"></div>
+              <div class="diameter-handle right" @mousedown.stop="startDragDiameter"></div>
               <div class="diameter-value">
                 {{ diameterMeasurement.diameter.toFixed(1) }}mm
               </div>
@@ -450,14 +541,18 @@ const fineTuneMode = ref(false);
 const rotationSpeed = ref(2.0); // 增加默认旋转速度
 const panDistance = ref(2.0); // 增加默认平移距离
 
-// 水平直径测量
+// 整体水平直径测量
 const diameterMeasurement = reactive({
   enabled: false,
   yPosition: 200,
   startX: 100,
   endX: 300,
-  diameter: 615.0, // 默认显示615mm，如图片所示
+  diameter: 600, // 默认显示600mm
   isDragging: false,
+  dragStartY: 0,
+  dragStartX: 0,
+  isDraggingStart: false,
+  isDraggingEnd: false,
 });
 
 // 当前加载的模型
@@ -470,6 +565,16 @@ const activeMeasureTool = ref("distance");
 const currentMeasurementPoints = ref<
   Array<{ world: THREE.Vector3; screen: { x: number; y: number } }>
 >([]);
+
+// 3D圆测量相关
+const circleMeasurement = reactive({
+  enabled: false,
+  center: new THREE.Vector3(),
+  radius: 100,
+  floatingLabel: null as null | { position: THREE.Vector3; value: string },
+  overlay: null as null | THREE.Mesh,
+  isCenterFixed: false,
+});
 
 // 自动贴合功能
 const autoSnapEnabled = ref(true);
@@ -490,17 +595,29 @@ const snapMouse = new THREE.Vector2();
 const distanceMeasurement = reactive({
   points: [] as THREE.Vector3[],
   distance: 0,
+  percentage: 0, // 百分比
 });
 
 const areaMeasurement = reactive({
-  points: [] as THREE.Vector3[],
-  area: 0,
+  areas: [] as Array<THREE.Vector3[]>, // 最多两个区域
+  areaValues: [] as number[],
+  percentage: 0,
 });
 
 const angleMeasurement = reactive({
   points: [] as THREE.Vector3[],
   angle: 0,
 });
+
+// 轮廓测量
+const contourMeasurement = reactive({
+  enabled: false,
+  diameter: 600, // 默认600mm
+  position: { x: 0, y: 0, z: 0 },
+  isDragging: false,
+});
+
+
 
 const savedMeasurements = ref<
   Array<{ type: string; value: string; timestamp: string }>
@@ -515,9 +632,18 @@ onMounted(() => {
   nextTick(() => {
     initScene();
     setupEventListeners();
-    // 自动检查文件
+    // 自动检查文件并加载默认模型
     setTimeout(() => {
       checkFiles();
+      // 默认加载网格模型
+      loadMeshModel();
+      // 自动开启缩略图并加载点云模型
+      showThumbnail.value = false;
+      nextTick(() => {
+        setTimeout(() => {
+          initThumbnailViewer();
+        }, 500);
+      });
     }, 1000);
   });
 });
@@ -586,6 +712,10 @@ const initScene = () => {
     controls = new OrbitControls(camera, modelCanvas.value);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
+    
+    // 添加控制器变化事件监听器
+    controls.addEventListener('change', onMainControlsChange);
+    
     console.log("🎮 控制器设置完成");
 
     // 添加光照
@@ -619,13 +749,7 @@ const initScene = () => {
     // 开始渲染循环
     animate();
 
-    // 自动创建测试模型，确保首次加载有内容显示
-    setTimeout(() => {
-      if (!currentMesh && !currentPointCloud) {
-        console.log("🔄 自动创建测试模型...");
-        createTestModel();
-      }
-    }, 500);
+
   } catch (error) {
     console.error("❌ 初始化3D场景失败:", error);
     ElMessage.error("3D场景初始化失败");
@@ -649,8 +773,69 @@ const animate = () => {
   }
   frameCount++;
 
+  // 强制确保测量模式下控制器被禁用
+  if (measurementMode.value) {
+    if (controls && controls.enabled) {
+      controls.enabled = false;
+      console.log("🔒 强制禁用主视图控制器（测量模式）");
+    }
+    if (thumbnailControls && thumbnailControls.enabled) {
+      thumbnailControls.enabled = false;
+      console.log("🔒 强制禁用缩略图控制器（测量模式）");
+    }
+  }
+
   if (controls) {
     controls.update();
+    
+    // 立体模式下同步主视图到缩略图
+    if (displayMode.value === "stereo" && 
+        thumbnailCamera && 
+        thumbnailControls && 
+        showThumbnail.value) {
+      // 两个窗口均可同步进行3D视角操作
+      thumbnailCamera.position.copy(camera.position);
+      thumbnailCamera.lookAt(controls.target);
+      thumbnailControls.target.copy(controls.target);
+      thumbnailControls.update();
+    }
+    
+    // 侧面模式和剖面模式下，缩略图跟随主视图的目标点
+    if ((displayMode.value === "side" || displayMode.value === "section") && 
+        thumbnailCamera && 
+        thumbnailControls && 
+        showThumbnail.value) {
+      
+      // 获取主视图的目标点
+      const target = controls.target.clone();
+      const offsetDistance = 10;
+      
+      if (displayMode.value === "side") {
+        // 侧面模式：缩略图显示端面视图，跟随主视图的目标点
+        const newPosition = new THREE.Vector3(
+          target.x,
+          target.y, 
+          target.z + offsetDistance
+        );
+        
+        thumbnailCamera.position.copy(newPosition);
+        thumbnailCamera.lookAt(target);
+        thumbnailControls.target.copy(target);
+      } else if (displayMode.value === "section") {
+        // 剖面模式：缩略图显示侧面视图，跟随主视图的目标点
+        const newPosition = new THREE.Vector3(
+          target.x + offsetDistance,
+          target.y,
+          target.z
+        );
+        
+        thumbnailCamera.position.copy(newPosition);
+        thumbnailCamera.lookAt(target);
+        thumbnailControls.target.copy(target);
+      }
+      
+      thumbnailControls.update();
+    }
   }
 
   if (renderer && scene && camera) {
@@ -683,6 +868,7 @@ const animate = () => {
         hasCamera: !!thumbnailCamera,
         isVisible: showThumbnail.value,
         sceneChildren: thumbnailScene?.children.length || 0,
+        displayMode: displayMode.value,
       });
     }
   }
@@ -698,8 +884,87 @@ const setupEventListeners = () => {
   window.addEventListener("resize", onWindowResize);
 };
 
+// 主视图控制器变化事件处理
+const onMainControlsChange = () => {
+  // 在侧面和剖面模式下，同步缩略图
+  if ((displayMode.value === "side" || displayMode.value === "section") && 
+      thumbnailCamera && thumbnailControls && showThumbnail.value && controls) {
+    
+    const target = controls.target.clone();
+    const offsetDistance = 10;
+    
+    if (displayMode.value === "side") {
+      // 侧面模式：缩略图显示端面视图，跟随主视图的目标点
+      const newPosition = new THREE.Vector3(
+        target.x,
+        target.y, 
+        target.z + offsetDistance
+      );
+      
+      thumbnailCamera.position.copy(newPosition);
+      thumbnailCamera.lookAt(target);
+      thumbnailControls.target.copy(target);
+      
+      console.log("🖼️ 侧面模式缩略图同步:", {
+        target: target,
+        position: thumbnailCamera.position
+      });
+    } else if (displayMode.value === "section") {
+      // 剖面模式：缩略图显示侧面视图，跟随主视图的目标点
+      const newPosition = new THREE.Vector3(
+        target.x + offsetDistance,
+        target.y,
+        target.z
+      );
+      
+      thumbnailCamera.position.copy(newPosition);
+      thumbnailCamera.lookAt(target);
+      thumbnailControls.target.copy(target);
+      
+      console.log("🖼️ 剖面模式缩略图同步:", {
+        target: target,
+        position: thumbnailCamera.position
+      });
+    }
+    
+    thumbnailControls.update();
+  }
+};
+
 const onCanvasClick = (event: MouseEvent) => {
   if (!measurementMode.value || !modelCanvas.value) return;
+
+  // 处理圆测量模式
+  if (activeMeasureTool.value === 'circle') {
+    if (!circleMeasurement.isCenterFixed) {
+      // 取当前鼠标位置作为圆心
+      let center: THREE.Vector3;
+      if (autoSnapEnabled.value && snapPreview.visible) {
+        center = snapPreview.snapPoint.clone();
+      } else {
+        const rect = modelCanvas.value.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const objects = [];
+        if (currentMesh) objects.push(currentMesh);
+        if (currentPointCloud) objects.push(currentPointCloud);
+        const intersects = raycaster.intersectObjects(objects);
+        if (intersects.length > 0) {
+          center = intersects[0].point.clone();
+        } else {
+          ElMessage.warning("请点击模型表面进行测量");
+          return;
+        }
+      }
+      circleMeasurement.center.copy(center);
+      circleMeasurement.isCenterFixed = true;
+      updateCircleOverlay();
+      ElMessage.info("圆心已固定，可用滚轮调整半径");
+      return;
+    }
+    return;
+  }
 
   let finalPoint: THREE.Vector3;
   let screenPos: { x: number; y: number };
@@ -711,7 +976,6 @@ const onCanvasClick = (event: MouseEvent) => {
       x: snapPreview.screenX,
       y: snapPreview.screenY,
     };
-
     console.log("🎯 使用自动贴合点:", finalPoint);
   } else {
     // 使用原始射线检测
@@ -720,13 +984,10 @@ const onCanvasClick = (event: MouseEvent) => {
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     raycaster.setFromCamera(mouse, camera);
-
     const objects = [];
     if (currentMesh) objects.push(currentMesh);
     if (currentPointCloud) objects.push(currentPointCloud);
-
     const intersects = raycaster.intersectObjects(objects);
-
     if (intersects.length > 0) {
       finalPoint = intersects[0].point.clone();
       screenPos = {
@@ -886,22 +1147,42 @@ const updateMeasurement = () => {
       if (points.length >= 2) {
         distanceMeasurement.points = points.slice(0, 2);
         distanceMeasurement.distance = points[0].distanceTo(points[1]);
+        // 计算百分比（基于模型尺寸）
+        const model = currentMesh || currentPointCloud;
+        if (model) {
+          const box = new THREE.Box3().setFromObject(model);
+          const size = box.getSize(new THREE.Vector3());
+          const maxDim = Math.max(size.x, size.y, size.z);
+          distanceMeasurement.percentage = Math.round((distanceMeasurement.distance / maxDim) * 100);
+        }
         if (points.length > 2) {
-          currentMeasurementPoints.value = currentMeasurementPoints.value.slice(
-            0,
-            2
-          );
+          currentMeasurementPoints.value = currentMeasurementPoints.value.slice(0, 2);
         }
       }
       break;
-
     case "area":
+      // 最多只能绘制两个面
+      if (areaMeasurement.areas.length >= 2) {
+        ElMessage.warning("最多只能绘制两个面");
+        return;
+      }
       if (points.length >= 3) {
-        areaMeasurement.points = [...points];
-        areaMeasurement.area = calculatePolygonArea(points);
+        const polygon = [...points];
+        const area = calculatePolygonArea(polygon);
+        areaMeasurement.areas.push(polygon);
+        areaMeasurement.areaValues.push(area);
+
+        if (areaMeasurement.areas.length === 2) {
+          // 计算第二个面占第一个面的重叠比例
+          const overlapPercent = calculatePolygonOverlapPercentage(
+            areaMeasurement.areas[0],
+            areaMeasurement.areas[1]
+          );
+          areaMeasurement.percentage = overlapPercent;
+        }
+        currentMeasurementPoints.value = [];
       }
       break;
-
     case "angle":
       if (points.length >= 3) {
         angleMeasurement.points = points.slice(0, 3);
@@ -911,15 +1192,90 @@ const updateMeasurement = () => {
           points[2]
         );
         if (points.length > 3) {
-          currentMeasurementPoints.value = currentMeasurementPoints.value.slice(
-            0,
-            3
-          );
+          currentMeasurementPoints.value = currentMeasurementPoints.value.slice(0, 3);
         }
       }
       break;
+    case "circle":
+      // 圆测量不通过updateMeasurement处理
+      break;
   }
 };
+
+// 计算两个多边形重叠百分比（2D投影后面积比，百分比）
+function calculatePolygonOverlapPercentage(poly1: THREE.Vector3[], poly2: THREE.Vector3[]): number {
+  // 简单投影到XZ平面
+  const p1 = poly1.map(v => ({ x: v.x, y: v.z }));
+  const p2 = poly2.map(v => ({ x: v.x, y: v.z }));
+  // 使用多边形布尔运算库或射线法，简单实现用canvas 2d Path2D
+  // 这里只能粗略估算，用canvas离屏采样
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return 0;
+  // 找最大边界
+  const all = [...p1, ...p2];
+  const minX = Math.min(...all.map(p => p.x));
+  const minY = Math.min(...all.map(p => p.y));
+  const maxX = Math.max(...all.map(p => p.x));
+  const maxY = Math.max(...all.map(p => p.y));
+  const margin = 1e-6;
+  const scaleX = (canvas.width - 2) / (maxX - minX + margin);
+  const scaleY = (canvas.height - 2) / (maxY - minY + margin);
+  // 画第一个区域
+  ctx.save();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.beginPath();
+  p1.forEach((pt, i) => {
+    const x = 1 + (pt.x - minX) * scaleX;
+    const y = 1 + (pt.y - minY) * scaleY;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.fillStyle = "#ff0000";
+  ctx.fill();
+  // 画第二个区域
+  ctx.globalCompositeOperation = "destination-in";
+  ctx.beginPath();
+  p2.forEach((pt, i) => {
+    const x = 1 + (pt.x - minX) * scaleX;
+    const y = 1 + (pt.y - minY) * scaleY;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.fillStyle = "#00ff00";
+  ctx.fill();
+  ctx.restore();
+  // 统计重叠像素数量
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let overlapPx = 0;
+  for (let i = 0; i < imgData.length; i += 4) {
+    if (imgData[i + 3] > 0) overlapPx++;
+  }
+  // 再计算第一个区域的像素数量
+  ctx.globalCompositeOperation = "source-over";
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.beginPath();
+  p1.forEach((pt, i) => {
+    const x = 1 + (pt.x - minX) * scaleX;
+    const y = 1 + (pt.y - minY) * scaleY;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.fillStyle = "#ff0000";
+  ctx.fill();
+  const imgData1 = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let area1Px = 0;
+  for (let i = 0; i < imgData1.length; i += 4) {
+    if (imgData1[i + 3] > 0) area1Px++;
+  }
+  if (area1Px === 0) return 0;
+  return (overlapPx / area1Px) * 100;
+}
 
 const calculatePolygonArea = (points: THREE.Vector3[]): number => {
   if (points.length < 3) return 0;
@@ -979,6 +1335,9 @@ const onWindowResize = () => {
       thumbnailContainer.value.clientWidth,
       thumbnailContainer.value.clientHeight
     );
+    
+    // 重新加载点云模型到缩略图
+    loadPointCloudToThumbnail();
   }
 
   // 重新绘制轮廓线
@@ -1239,70 +1598,7 @@ const checkFiles = async () => {
   }
 };
 
-// 创建测试模型（用于调试）
-const createTestModel = () => {
-  try {
-    console.log("🧪 创建测试模型...");
 
-    if (!scene) {
-      console.error("❌ 场景未初始化");
-      ElMessage.error("场景未初始化，请先切换到3D模型模式");
-      return;
-    }
-
-    // 清除之前的模型
-    if (currentMesh) {
-      console.log("🗑️ 移除之前的网格模型");
-      scene.remove(currentMesh);
-    }
-    if (currentPointCloud) {
-      console.log("🗑️ 移除之前的点云模型");
-      scene.remove(currentPointCloud);
-    }
-
-    console.log("🔨 创建立方体几何体和材质...");
-
-    // 创建一个简单的立方体
-    const geometry = new THREE.BoxGeometry(2, 2, 2);
-    const material = new THREE.MeshLambertMaterial({
-      color: 0x00aa00,
-      side: THREE.DoubleSide,
-    });
-
-    console.log("🔗 创建网格对象并添加到场景...");
-    currentMesh = new THREE.Mesh(geometry, material);
-    scene.add(currentMesh);
-
-    // 更新模型信息
-    currentModelType.value = "测试立方体";
-    modelVertexCount.value = geometry.attributes.position.count;
-    modelFaceCount.value = 12; // 立方体有12个面
-
-    console.log("📊 测试模型统计:", {
-      type: currentModelType.value,
-      vertices: modelVertexCount.value,
-      faces: modelFaceCount.value,
-      sceneChildren: scene.children.length,
-    });
-
-    // 重置相机位置
-    console.log("📷 重置相机位置...");
-    camera.position.set(5, 5, 5);
-    camera.lookAt(0, 0, 0);
-    controls.target.set(0, 0, 0);
-    controls.update();
-
-    console.log("✅ 测试模型创建完成！");
-    ElMessage.success("测试模型创建成功！应该能看到一个绿色立方体");
-  } catch (error) {
-    console.error("❌ 创建测试模型失败:", error);
-    ElMessage.error(
-      `创建测试模型失败: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
-  }
-};
 
 // 视角预设
 const setViewAngle = (angle: string) => {
@@ -1426,30 +1722,44 @@ const updateBrightness = () => {
 const changeDisplayMode = (mode: "stereo" | "side" | "section") => {
   displayMode.value = mode;
 
-  // 根据模式调整主视图控制器限制
-  if (controls) {
+  // 根据模式调整主视图控制器限制（仅在非测量模式下）
+  if (controls && !measurementMode.value) {
     switch (mode) {
       case "stereo":
-        // 立体模式：无限制
+        // 模式1：立体模式
+        // 显示方式：主窗口和缩略窗口都显示相同类型的视图（均为侧面或均为端面）
+        // 操作特点：两个窗口均可同步进行3D视角操作
         controls.enableRotate = true;
+        controls.enablePan = true;
+        controls.enableZoom = true;
         controls.minPolarAngle = 0;
         controls.maxPolarAngle = Math.PI;
         controls.minAzimuthAngle = -Infinity;
         controls.maxAzimuthAngle = Infinity;
         break;
       case "side":
-        // 侧面模式：主视图侧面，只能左右旋转
+        // 模式2：侧面模式
+        // 显示方式：主视图侧面、缩略图端面
+        // 操作限制：在侧面视角只能左右旋转不能上下翻转
         controls.enableRotate = true;
-        controls.minPolarAngle = Math.PI / 2 - 0.1;
+        controls.enablePan = true;
+        controls.enableZoom = true;
+        controls.minPolarAngle = Math.PI / 2 - 0.1; // 限制为水平视角（只能左右旋转）
         controls.maxPolarAngle = Math.PI / 2 + 0.1;
         controls.minAzimuthAngle = -Infinity;
         controls.maxAzimuthAngle = Infinity;
         break;
       case "section":
-        // 剖面模式：主视图端面，只能上下移动
-        controls.enableRotate = false;
+        // 模式3：剖面模式
+        // 显示方式：主视图端面、缩略图侧面
+        // 操作限制：在剖面图只能向着上下拉近拉远，不能左右侧面旋转调整
+        controls.enableRotate = true;
         controls.enablePan = true;
         controls.enableZoom = true;
+        controls.minAzimuthAngle = 0; // 限制为端面视角（只能上下拉近拉远）
+        controls.maxAzimuthAngle = 0;
+        controls.minPolarAngle = 0;
+        controls.maxPolarAngle = Math.PI;
         break;
     }
   }
@@ -1458,6 +1768,32 @@ const changeDisplayMode = (mode: "stereo" | "side" | "section") => {
   if (showThumbnail.value && thumbnailCamera) {
     setupThumbnailView();
     applyThumbnailViewRestrictions();
+    
+    // 立体模式下立即同步主视图到缩略图
+    if (mode === "stereo" && camera && controls) {
+      thumbnailCamera.position.copy(camera.position);
+      thumbnailCamera.lookAt(controls.target);
+      if (thumbnailControls) {
+        thumbnailControls.target.copy(controls.target);
+      }
+    }
+    
+    // 侧面模式和剖面模式下，缩略图跟随主视图的目标点
+    if ((mode === "side" || mode === "section") && controls) {
+      const target = controls.target.clone();
+      if (mode === "side") {
+        // 侧面模式：缩略图显示端面视图
+        thumbnailCamera.position.set(target.x, target.y, target.z + 10);
+        thumbnailCamera.lookAt(target);
+      } else if (mode === "section") {
+        // 剖面模式：缩略图显示侧面视图
+        thumbnailCamera.position.set(target.x + 10, target.y, target.z);
+        thumbnailCamera.lookAt(target);
+      }
+      if (thumbnailControls) {
+        thumbnailControls.target.copy(target);
+      }
+    }
   }
 
   // 更新轮廓线
@@ -1470,9 +1806,9 @@ const changeDisplayMode = (mode: "stereo" | "side" | "section") => {
 
 const getDisplayModeName = (mode: string): string => {
   const names: Record<string, string> = {
-    stereo: "立体模式",
-    side: "侧面模式",
-    section: "剖面模式",
+    stereo: "立体模式（同步操作）",
+    side: "侧面模式（主视图侧面）",
+    section: "剖面模式（主视图端面）",
   };
   return names[mode] || "未知模式";
 };
@@ -1503,10 +1839,15 @@ const adjustView = (direction: string) => {
     case "up":
       console.log("⬆️ 向上调整");
       if (displayMode.value === "section") {
+        // 剖面模式：只能上下移动
         camera.position.y += distance;
         console.log("📷 剖面模式：相机Y位置增加", distance);
+      } else if (displayMode.value === "side") {
+        // 侧面模式：不允许上下翻转
+        console.log("⚠️ 侧面模式：不允许上下翻转");
+        ElMessage.warning("侧面模式只能左右旋转，不能上下翻转");
       } else {
-        // 手动旋转相机
+        // 立体模式：可以自由旋转
         const spherical = new THREE.Spherical();
         spherical.setFromVector3(camera.position.clone().sub(controls.target));
         spherical.phi -= speed * 0.01;
@@ -1515,16 +1856,21 @@ const adjustView = (direction: string) => {
           new THREE.Vector3().setFromSpherical(spherical).add(controls.target)
         );
         camera.lookAt(controls.target);
-        console.log("📷 旋转模式：相机位置更新", camera.position);
+        console.log("📷 立体模式：相机位置更新", camera.position);
       }
       break;
     case "down":
       console.log("⬇️ 向下调整");
       if (displayMode.value === "section") {
+        // 剖面模式：只能上下移动
         camera.position.y -= distance;
         console.log("📷 剖面模式：相机Y位置减少", distance);
+      } else if (displayMode.value === "side") {
+        // 侧面模式：不允许上下翻转
+        console.log("⚠️ 侧面模式：不允许上下翻转");
+        ElMessage.warning("侧面模式只能左右旋转，不能上下翻转");
       } else {
-        // 手动旋转相机
+        // 立体模式：可以自由旋转
         const spherical = new THREE.Spherical();
         spherical.setFromVector3(camera.position.clone().sub(controls.target));
         spherical.phi += speed * 0.01;
@@ -1533,13 +1879,17 @@ const adjustView = (direction: string) => {
           new THREE.Vector3().setFromSpherical(spherical).add(controls.target)
         );
         camera.lookAt(controls.target);
-        console.log("📷 旋转模式：相机位置更新", camera.position);
+        console.log("📷 立体模式：相机位置更新", camera.position);
       }
       break;
     case "left":
       console.log("⬅️ 向左调整");
-      if (displayMode.value !== "section") {
-        // 手动旋转相机
+      if (displayMode.value === "section") {
+        // 剖面模式：不允许左右旋转
+        console.log("⚠️ 剖面模式：不允许左右旋转");
+        ElMessage.warning("剖面模式只能上下拉近拉远，不能左右旋转");
+      } else {
+        // 侧面模式和立体模式：可以左右旋转
         const spherical = new THREE.Spherical();
         spherical.setFromVector3(camera.position.clone().sub(controls.target));
         spherical.theta += speed * 0.01;
@@ -1547,15 +1897,17 @@ const adjustView = (direction: string) => {
           new THREE.Vector3().setFromSpherical(spherical).add(controls.target)
         );
         camera.lookAt(controls.target);
-        console.log("📷 旋转模式：相机位置更新", camera.position);
-      } else {
-        console.log("⚠️ 剖面模式：不支持左右旋转");
+        console.log("📷 左右旋转：相机位置更新", camera.position);
       }
       break;
     case "right":
       console.log("➡️ 向右调整");
-      if (displayMode.value !== "section") {
-        // 手动旋转相机
+      if (displayMode.value === "section") {
+        // 剖面模式：不允许左右旋转
+        console.log("⚠️ 剖面模式：不允许左右旋转");
+        ElMessage.warning("剖面模式只能上下拉近拉远，不能左右旋转");
+      } else {
+        // 侧面模式和立体模式：可以左右旋转
         const spherical = new THREE.Spherical();
         spherical.setFromVector3(camera.position.clone().sub(controls.target));
         spherical.theta -= speed * 0.01;
@@ -1563,9 +1915,7 @@ const adjustView = (direction: string) => {
           new THREE.Vector3().setFromSpherical(spherical).add(controls.target)
         );
         camera.lookAt(controls.target);
-        console.log("📷 旋转模式：相机位置更新", camera.position);
-      } else {
-        console.log("⚠️ 剖面模式：不支持左右旋转");
+        console.log("📷 左右旋转：相机位置更新", camera.position);
       }
       break;
     case "center":
@@ -1591,14 +1941,103 @@ const toggleMeasurementMode = () => {
   }
 };
 
+// 选择测量工具
+const selectMeasureTool = (tool: string) => {
+  // 清理测量模式相关状态
+  currentMeasurementPoints.value = [];
+  // 清理浮标和圆测量
+  circleMeasurement.floatingLabel = null;
+  circleMeasurement.overlay = null;
+  circleMeasurement.isCenterFixed = false;
+  areaMeasurement.areas = [];
+  areaMeasurement.areaValues = [];
+  areaMeasurement.percentage = 0;
+
+  activeMeasureTool.value = tool;
+  
+  // 开启测量模式时禁用3D模型拖动
+  if (tool !== 'none') {
+    measurementMode.value = true;
+    if (controls) {
+      controls.enabled = false;
+      console.log("🔒 测量模式：已禁用主视图3D模型拖动");
+    }
+    if (thumbnailControls) {
+      thumbnailControls.enabled = false;
+      console.log("🔒 测量模式：已禁用缩略图3D模型拖动");
+    }
+  } else {
+    measurementMode.value = false;
+    if (controls) {
+      controls.enabled = true;
+      console.log("🔓 测量模式：已启用主视图3D模型拖动");
+    }
+    if (thumbnailControls) {
+      thumbnailControls.enabled = true;
+      console.log("🔓 测量模式：已启用缩略图3D模型拖动");
+    }
+  }
+  
+  console.log("🔧 选择测量工具:", tool);
+  
+  // 根据工具类型设置相应的测量模式
+  switch (tool) {
+    case 'contour':
+      contourMeasurement.enabled = true;
+      break;
+    case 'diameter':
+      diameterMeasurement.enabled = true;
+      break;
+    case 'circle':
+      circleMeasurement.enabled = true;
+      circleMeasurement.isCenterFixed = false;
+      break;
+    case 'distance':
+    case 'area':
+    case 'angle':
+      // 这些工具需要点击选择点
+      break;
+  }
+  
+  ElMessage.info(`已选择${getMeasureToolName(tool)}`);
+};
+
+// 获取测量工具名称
+const getMeasureToolName = (tool: string): string => {
+  const names: Record<string, string> = {
+    contour: "轮廓测量",
+    distance: "直线测量", 
+    diameter: "直径测量",
+    area: "面积测量",
+    angle: "角度测量"
+  };
+  return names[tool] || "未知工具";
+};
+
 const clearMeasurements = () => {
   currentMeasurementPoints.value = [];
   distanceMeasurement.points = [];
   distanceMeasurement.distance = 0;
-  areaMeasurement.points = [];
-  areaMeasurement.area = 0;
+  areaMeasurement.areas = [];
+  areaMeasurement.areaValues = [];
+  areaMeasurement.percentage = 0;
   angleMeasurement.points = [];
   angleMeasurement.angle = 0;
+  // 清除圆测量
+  circleMeasurement.floatingLabel = null;
+  circleMeasurement.overlay = null;
+  circleMeasurement.isCenterFixed = false;
+  
+  // 清除测量时重新启用3D模型拖动
+  measurementMode.value = false;
+  if (controls) {
+    controls.enabled = true;
+    console.log("🔓 清除测量：已重新启用主视图3D模型拖动");
+  }
+  if (thumbnailControls) {
+    thumbnailControls.enabled = true;
+    console.log("🔓 清除测量：已重新启用缩略图3D模型拖动");
+  }
 };
 
 const saveMeasurements = () => {
@@ -1615,10 +2054,13 @@ const saveMeasurements = () => {
     });
   }
 
-  if (activeMeasureTool.value === "area" && areaMeasurement.area > 0) {
+if (activeMeasureTool.value === "area" && areaMeasurement.areaValues.length > 0) {
     savedMeasurements.value.push({
       type: "面积",
-      value: `${areaMeasurement.area.toFixed(3)} 平方单位`,
+      value:
+        areaMeasurement.areaValues.length === 2
+          ? `面积1: ${areaMeasurement.areaValues[0].toFixed(3)}㎡, 面积2: ${areaMeasurement.areaValues[1].toFixed(3)}㎡, 重叠: ${areaMeasurement.percentage.toFixed(2)}%`
+          : `面积1: ${areaMeasurement.areaValues[0].toFixed(3)}㎡`,
       timestamp,
     });
   }
@@ -1643,10 +2085,12 @@ const saveMeasurements = () => {
 // 获取视角限制提示
 const getViewRestrictionHint = (): string => {
   switch (displayMode.value) {
+    case "stereo":
+      return "立体模式：两个窗口均可同步进行3D视角操作";
     case "side":
-      return "侧面模式：只能左右旋转，不能上下翻转";
+      return "侧面模式：在侧面视角只能左右旋转不能上下翻转";
     case "section":
-      return "剖面模式：只能上下拉近拉远，不能左右旋转";
+      return "剖面模式：在剖面图只能向着上下拉近拉远，不能左右侧面旋转调整";
     default:
       return "";
   }
@@ -1655,12 +2099,14 @@ const getViewRestrictionHint = (): string => {
 // 获取缩略图标签
 const getThumbnailLabel = (): string => {
   switch (displayMode.value) {
+    case "stereo":
+      return "同步";
     case "side":
-      return "端面视图";
+      return "端面";
     case "section":
-      return "侧面视图";
+      return "侧面";
     default:
-      return "同步视图";
+      return "同步";
   }
 };
 
@@ -1724,12 +2170,6 @@ const initThumbnailViewer = () => {
     );
     thumbnailRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 限制像素比以提高性能
 
-    // 根据显示模式设置缩略图视角
-    setupThumbnailView();
-
-    // 复制主场景的模型到缩略图场景
-    syncModelToThumbnail();
-
     // 创建缩略图控制器（根据模式可能被限制）
     thumbnailControls = new OrbitControls(
       thumbnailCamera,
@@ -1738,8 +2178,14 @@ const initThumbnailViewer = () => {
     thumbnailControls.enableDamping = true;
     thumbnailControls.dampingFactor = 0.05;
 
+    // 根据显示模式设置缩略图视角
+    setupThumbnailView();
+
     // 根据显示模式限制缩略图控制
     applyThumbnailViewRestrictions();
+
+    // 缩略图始终显示点云模型
+    loadPointCloudToThumbnail();
 
     // 立即渲染一次缩略图
     if (thumbnailRenderer && thumbnailScene && thumbnailCamera) {
@@ -1758,23 +2204,131 @@ const setupThumbnailView = () => {
 
   switch (displayMode.value) {
     case "stereo":
-      // 立体模式：与主视图同步
+      // 模式1：立体模式
+      // 显示方式：主窗口和缩略窗口都显示相同类型的视图（均为侧面或均为端面）
       if (camera) {
         thumbnailCamera.position.copy(camera.position);
-        thumbnailCamera.lookAt(0, 0, 0);
+        thumbnailCamera.lookAt(controls?.target || new THREE.Vector3(0, 0, 0));
+        // 同步控制器目标点
+        if (thumbnailControls) {
+          thumbnailControls.target.copy(controls?.target || new THREE.Vector3(0, 0, 0));
+        }
       }
       break;
     case "side":
-      // 侧面模式：主视图侧面，缩略图端面
-      thumbnailCamera.position.set(0, 0, 10); // 端面视图
-      thumbnailCamera.lookAt(0, 0, 0);
+      // 模式2：侧面模式
+      // 显示方式：主视图侧面、缩略图端面
+      if (controls) {
+        // 缩略图显示端面视图，跟随主视图的目标点
+        const target = controls.target.clone();
+        thumbnailCamera.position.set(target.x, target.y, target.z + 10); // 端面视图（Z轴正方向）
+        thumbnailCamera.lookAt(target);
+        if (thumbnailControls) {
+          thumbnailControls.target.copy(target);
+        }
+      } else {
+        thumbnailCamera.position.set(0, 0, 10); // 默认端面视图
+        thumbnailCamera.lookAt(0, 0, 0);
+        if (thumbnailControls) {
+          thumbnailControls.target.set(0, 0, 0);
+        }
+      }
       break;
     case "section":
-      // 剖面模式：主视图端面，缩略图侧面
-      thumbnailCamera.position.set(10, 0, 0); // 侧面视图
-      thumbnailCamera.lookAt(0, 0, 0);
+      // 模式3：剖面模式
+      // 显示方式：主视图端面、缩略图侧面
+      if (controls) {
+        // 缩略图显示侧面视图，跟随主视图的目标点
+        const target = controls.target.clone();
+        thumbnailCamera.position.set(target.x + 10, target.y, target.z); // 侧面视图（X轴正方向）
+        thumbnailCamera.lookAt(target);
+        if (thumbnailControls) {
+          thumbnailControls.target.copy(target);
+        }
+      } else {
+        thumbnailCamera.position.set(10, 0, 0); // 默认侧面视图
+        thumbnailCamera.lookAt(0, 0, 0);
+        if (thumbnailControls) {
+          thumbnailControls.target.set(0, 0, 0);
+        }
+      }
       break;
   }
+};
+
+// 加载点云模型到缩略图
+const loadPointCloudToThumbnail = () => {
+  if (!thumbnailScene) {
+    console.error("❌ 缩略图场景未初始化");
+    return;
+  }
+
+  console.log("🖼️ 加载点云模型到缩略图...");
+
+  // 清除缩略图场景中的现有模型
+  const modelsToRemove = thumbnailScene.children.filter(
+    (child) => child instanceof THREE.Mesh || child instanceof THREE.Points
+  );
+  modelsToRemove.forEach((model) => thumbnailScene.remove(model));
+
+  // 检查点云文件是否存在
+  fetch("/Out/sparse_point.ply", { method: "HEAD" })
+    .then((response) => {
+      if (response.ok) {
+        console.log("✅ 点云文件存在，开始加载到缩略图...");
+        
+        // 使用PLYLoader加载点云
+        const loader = new PLYLoader();
+        loader.load(
+          "/Out/sparse_point.ply",
+          (geometry) => {
+            console.log("✅ 点云几何体加载成功，顶点数:", geometry.attributes.position.count);
+            
+            // 创建点云材质
+            const material = new THREE.PointsMaterial({
+              size: 0.05,
+              vertexColors: true,
+            });
+
+            // 创建点云对象
+            const pointCloud = new THREE.Points(geometry, material);
+            pointCloud.visible = true;
+            pointCloud.position.set(0, 0, 0);
+
+            // 添加到缩略图场景
+            thumbnailScene.add(pointCloud);
+
+            // 立即渲染缩略图
+            if (thumbnailRenderer && thumbnailScene && thumbnailCamera) {
+              thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
+              console.log("🎨 缩略图点云渲染完成");
+            }
+
+            console.log("✅ 点云模型已加载到缩略图");
+          },
+          (progress) => {
+            console.log("📊 点云加载进度:", (progress.loaded / progress.total * 100).toFixed(1) + "%");
+          },
+          (error) => {
+            console.error("❌ 点云加载失败:", error);
+            ElMessage.error("点云模型加载失败");
+          }
+        );
+      } else {
+        console.warn("⚠️ 点云文件不存在，缩略图将显示空白");
+        // 即使没有点云文件，也要渲染缩略图
+        if (thumbnailRenderer && thumbnailScene && thumbnailCamera) {
+          thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
+        }
+      }
+    })
+    .catch((error) => {
+      console.error("❌ 检查点云文件失败:", error);
+      // 即使检查失败，也要渲染缩略图
+      if (thumbnailRenderer && thumbnailScene && thumbnailCamera) {
+        thumbnailRenderer.render(thumbnailScene, thumbnailCamera);
+      }
+    });
 };
 
 const syncModelToThumbnail = () => {
@@ -1786,15 +2340,13 @@ const syncModelToThumbnail = () => {
   );
   modelsToRemove.forEach((model) => thumbnailScene.remove(model));
 
-  // 复制当前模型到缩略图场景
-  if (currentMesh) {
-    const meshClone = currentMesh.clone();
-    thumbnailScene.add(meshClone);
-  }
-
+  // 缩略图始终显示点云模型
   if (currentPointCloud) {
     const pointsClone = currentPointCloud.clone();
     thumbnailScene.add(pointsClone);
+  } else {
+    // 如果没有点云模型，尝试加载点云模型到缩略图
+    loadPointCloudToThumbnail();
   }
 
   // 添加光照
@@ -1809,26 +2361,43 @@ const syncModelToThumbnail = () => {
 const applyThumbnailViewRestrictions = () => {
   if (!thumbnailControls) return;
 
+  // 在测量模式下不修改控制器设置
+  if (measurementMode.value) {
+    console.log("🔒 测量模式：跳过缩略图控制器限制设置");
+    return;
+  }
+
   switch (displayMode.value) {
     case "stereo":
-      // 立体模式：无限制，可同步操作
+      // 模式1：立体模式
+      // 两个窗口均可同步进行3D视角操作
       thumbnailControls.enableRotate = true;
+      thumbnailControls.enablePan = true;
+      thumbnailControls.enableZoom = true;
       thumbnailControls.minPolarAngle = 0;
       thumbnailControls.maxPolarAngle = Math.PI;
       thumbnailControls.minAzimuthAngle = -Infinity;
       thumbnailControls.maxAzimuthAngle = Infinity;
       break;
     case "side":
-      // 侧面模式：缩略图为端面视图，限制为只能前后移动
-      thumbnailControls.enableRotate = false;
+      // 模式2：侧面模式
+      // 缩略图显示端面视图，可以自由操作
+      thumbnailControls.enableRotate = true;
       thumbnailControls.enablePan = true;
       thumbnailControls.enableZoom = true;
+      thumbnailControls.minPolarAngle = 0;
+      thumbnailControls.maxPolarAngle = Math.PI;
+      thumbnailControls.minAzimuthAngle = -Infinity;
+      thumbnailControls.maxAzimuthAngle = Infinity;
       break;
     case "section":
-      // 剖面模式：缩略图为侧面视图，限制为只能左右旋转
+      // 模式3：剖面模式
+      // 缩略图显示侧面视图，可以自由操作
       thumbnailControls.enableRotate = true;
-      thumbnailControls.minPolarAngle = Math.PI / 2 - 0.1;
-      thumbnailControls.maxPolarAngle = Math.PI / 2 + 0.1;
+      thumbnailControls.enablePan = true;
+      thumbnailControls.enableZoom = true;
+      thumbnailControls.minPolarAngle = 0;
+      thumbnailControls.maxPolarAngle = Math.PI;
       thumbnailControls.minAzimuthAngle = -Infinity;
       thumbnailControls.maxAzimuthAngle = Infinity;
       break;
@@ -1891,6 +2460,42 @@ const drawContour = () => {
     }
   }
 
+  // 绘制直径测量线的轮廓
+  if (diameterMeasurement.enabled) {
+    ctx.strokeStyle = "#ffaa00";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([]);
+    
+    const y = diameterMeasurement.yPosition;
+    const startX = diameterMeasurement.startX;
+    const endX = diameterMeasurement.endX;
+    
+    // 绘制水平直径线
+    ctx.beginPath();
+    ctx.moveTo(startX, y);
+    ctx.lineTo(endX, y);
+    ctx.stroke();
+    
+    // 绘制端点标记
+    ctx.fillStyle = "#ffaa00";
+    ctx.beginPath();
+    ctx.arc(startX, y, 5, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(endX, y, 5, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // 绘制直径数值
+    ctx.fillStyle = "#ffaa00";
+    ctx.font = "14px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(
+      `${diameterMeasurement.diameter.toFixed(1)}mm`,
+      (startX + endX) / 2,
+      y - 10
+    );
+  }
+
   // 如果有缩略图，也绘制缩略图轮廓
   if (
     showThumbnail.value &&
@@ -1927,9 +2532,59 @@ const drawThumbnailContour = () => {
     rect.height * 0.6
   );
   ctx.stroke();
+
+  // 绘制缩略图中的直径测量线
+  if (diameterMeasurement.enabled) {
+    ctx.strokeStyle = "#ffaa00";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([]);
+    
+    // 缩略图中的位置需要按比例缩放
+    const scaleX = rect.width / (modelContainer.value?.clientWidth || 800);
+    const scaleY = rect.height / (modelContainer.value?.clientHeight || 600);
+    
+    const y = diameterMeasurement.yPosition * scaleY;
+    const startX = diameterMeasurement.startX * scaleX;
+    const endX = diameterMeasurement.endX * scaleX;
+    
+    // 绘制水平直径线
+    ctx.beginPath();
+    ctx.moveTo(startX, y);
+    ctx.lineTo(endX, y);
+    ctx.stroke();
+    
+    // 绘制端点标记
+    ctx.fillStyle = "#ffaa00";
+    ctx.beginPath();
+    ctx.arc(startX, y, 3, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(endX, y, 3, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // 绘制直径数值
+    ctx.fillStyle = "#ffaa00";
+    ctx.font = "10px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(
+      `${diameterMeasurement.diameter.toFixed(1)}mm`,
+      (startX + endX) / 2,
+      y - 5
+    );
+  }
 };
 
-// 水平直径测量功能
+// 轮廓测量功能
+const toggleContourMeasurement = () => {
+  contourMeasurement.enabled = !contourMeasurement.enabled;
+  if (contourMeasurement.enabled) {
+    ElMessage.success("轮廓测量已开启，点击触发黄线标记，可拖动");
+  } else {
+    ElMessage.info("轮廓测量已关闭");
+  }
+};
+
+// 整体水平直径测量功能
 const toggleDiameterMeasurement = () => {
   diameterMeasurement.enabled = !diameterMeasurement.enabled;
   if (diameterMeasurement.enabled) {
@@ -1941,32 +2596,83 @@ const toggleDiameterMeasurement = () => {
       diameterMeasurement.endX = rect.width * 0.8;
       calculateDiameter();
     }
-    ElMessage.success("水平直径测量已开启，拖动测量线调整位置");
+    ElMessage.success("整体水平直径测量已开启，可拖动测量线调整位置");
   } else {
-    ElMessage.info("水平直径测量已关闭");
+    ElMessage.info("整体水平直径测量已关闭");
   }
 };
 
-const startDragDiameter = () => {
-  diameterMeasurement.isDragging = true;
+const startDragDiameter = (event: MouseEvent) => {
+  if (!diameterMeasurement.enabled) return;
+  
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const rect = modelContainer.value?.getBoundingClientRect();
+  if (!rect) return;
+  
+  const mouseX = event.clientX - rect.left;
+  const mouseY = event.clientY - rect.top;
+  
+  // 判断是拖动整条线还是端点
+  const lineY = diameterMeasurement.yPosition;
+  const startX = diameterMeasurement.startX;
+  const endX = diameterMeasurement.endX;
+  
+  // 检查是否点击在端点附近
+  const handleRadius = 10;
+  const distanceToStart = Math.sqrt((mouseX - startX) ** 2 + (mouseY - lineY) ** 2);
+  const distanceToEnd = Math.sqrt((mouseX - endX) ** 2 + (mouseY - lineY) ** 2);
+  
+  if (distanceToStart <= handleRadius) {
+    diameterMeasurement.isDraggingStart = true;
+    console.log("🎯 开始拖动直径测量线起点");
+  } else if (distanceToEnd <= handleRadius) {
+    diameterMeasurement.isDraggingEnd = true;
+    console.log("🎯 开始拖动直径测量线终点");
+  } else if (Math.abs(mouseY - lineY) <= 5 && mouseX >= startX && mouseX <= endX) {
+    diameterMeasurement.isDragging = true;
+    diameterMeasurement.dragStartY = mouseY - lineY;
+    console.log("🎯 开始拖动直径测量线");
+  }
 
   const handleMouseMove = (e: MouseEvent) => {
-    if (diameterMeasurement.isDragging && modelContainer.value) {
-      const rect = modelContainer.value.getBoundingClientRect();
-      diameterMeasurement.yPosition = e.clientY - rect.top;
-      calculateDiameter();
-
-      // 实时更新轮廓线
-      if (showContour.value) {
-        drawContour();
-      }
+    if (!diameterMeasurement.enabled) return;
+    
+    const rect = modelContainer.value?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    if (diameterMeasurement.isDragging) {
+      // 拖动整条线
+      const newY = mouseY - diameterMeasurement.dragStartY;
+      diameterMeasurement.yPosition = Math.max(50, Math.min(rect.height - 50, newY));
+    } else if (diameterMeasurement.isDraggingStart) {
+      // 拖动起点
+      diameterMeasurement.startX = Math.max(50, Math.min(diameterMeasurement.endX - 50, mouseX));
+    } else if (diameterMeasurement.isDraggingEnd) {
+      // 拖动终点
+      diameterMeasurement.endX = Math.max(diameterMeasurement.startX + 50, Math.min(rect.width - 50, mouseX));
+    }
+    
+    // 计算直径
+    calculateDiameter();
+    
+    // 实时更新轮廓线
+    if (showContour.value) {
+      drawContour();
     }
   };
 
   const handleMouseUp = () => {
     diameterMeasurement.isDragging = false;
+    diameterMeasurement.isDraggingStart = false;
+    diameterMeasurement.isDraggingEnd = false;
     document.removeEventListener("mousemove", handleMouseMove);
     document.removeEventListener("mouseup", handleMouseUp);
+    console.log("✅ 结束拖动直径测量线");
   };
 
   document.addEventListener("mousemove", handleMouseMove);
@@ -2043,6 +2749,65 @@ const debugInfo = () => {
   ElMessage.info("调试信息已输出到控制台");
 };
 
+// 测试缩略图同步函数
+const testThumbnailSync = () => {
+  console.log("🧪 测试缩略图同步...");
+  
+  if (!controls || !thumbnailCamera || !thumbnailControls) {
+    console.error("❌ 控制器未准备好");
+    ElMessage.error("控制器未准备好");
+    return;
+  }
+  
+  // 模拟主视图控制器变化
+  const originalTarget = controls.target.clone();
+  controls.target.set(originalTarget.x + 5, originalTarget.y + 3, originalTarget.z + 2);
+  controls.update();
+  
+  console.log("🔄 主视图目标点已改变:", {
+    original: originalTarget,
+    new: controls.target.clone()
+  });
+  
+  // 手动触发同步
+  onMainControlsChange();
+  
+  ElMessage.success("缩略图同步测试完成，请查看控制台");
+};
+
+// 检查控制器状态函数
+const checkControlsStatus = () => {
+  console.log("🔍 检查控制器状态:");
+  console.log("测量模式:", measurementMode.value);
+  console.log("主视图控制器:", {
+    exists: !!controls,
+    enabled: controls?.enabled,
+    enableRotate: controls?.enableRotate,
+    enablePan: controls?.enableZoom,
+    enableZoom: controls?.enableZoom
+  });
+  console.log("缩略图控制器:", {
+    exists: !!thumbnailControls,
+    enabled: thumbnailControls?.enabled,
+    enableRotate: thumbnailControls?.enableRotate,
+    enablePan: thumbnailControls?.enableZoom,
+    enableZoom: thumbnailControls?.enableZoom
+  });
+  
+  // 强制设置正确的状态
+  if (measurementMode.value) {
+    if (controls) controls.enabled = false;
+    if (thumbnailControls) thumbnailControls.enabled = false;
+    console.log("🔒 已强制禁用控制器");
+  } else {
+    if (controls) controls.enabled = true;
+    if (thumbnailControls) thumbnailControls.enabled = true;
+    console.log("🔓 已强制启用控制器");
+  }
+  
+  ElMessage.info("控制器状态已检查并修正，请查看控制台");
+};
+
 // 测试微调功能
 const testAdjustView = () => {
   console.log("🧪 测试微调功能");
@@ -2072,6 +2837,7 @@ const cleanup = () => {
   window.removeEventListener("resize", onWindowResize);
 
   if (controls) {
+    controls.removeEventListener('change', onMainControlsChange);
     controls.dispose();
   }
 
@@ -2183,6 +2949,13 @@ const cleanup = () => {
   display: flex;
   gap: 6px;
   margin-top: 8px;
+}
+
+.debug-tools {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .info-item {
@@ -2418,6 +3191,84 @@ const cleanup = () => {
   display: inline-block;
 }
 
+/* 测量工具列表样式 */
+.measurement-tools-list {
+  margin-bottom: 12px;
+}
+
+.measurement-tool-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  margin-bottom: 4px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.measurement-tool-item:hover {
+  background: #e9ecef;
+  border-color: #007bff;
+}
+
+.measurement-tool-item.active {
+  background: #007bff;
+  color: white;
+  border-color: #0056b3;
+}
+
+.tool-icon {
+  font-size: 16px;
+  margin-right: 8px;
+  min-width: 20px;
+}
+
+.tool-info {
+  flex: 1;
+}
+
+.tool-name {
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.tool-value {
+  font-size: 11px;
+  color: #666;
+  font-weight: bold;
+}
+
+.measurement-tool-item.active .tool-value {
+  color: #fff;
+}
+
+/* 轮廓测量控制面板 */
+.contour-controls {
+  margin-top: 12px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+}
+
+.contour-info {
+  margin-top: 8px;
+}
+
+.contour-info p {
+  margin: 2px 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.contour-info p:last-child {
+  color: #ffaa00;
+  font-weight: bold;
+}
+
 /* 直径测量控制面板 */
 .diameter-controls {
   margin-top: 12px;
@@ -2442,15 +3293,60 @@ const cleanup = () => {
   font-weight: bold;
 }
 
-/* 水平直径测量线样式增强 */
-.diameter-measurement .diameter-line {
-  box-shadow: 0 0 4px rgba(255, 68, 68, 0.5);
+/* 整体水平直径测量线样式 */
+.diameter-measurement {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
 }
 
-.diameter-measurement .diameter-value {
-  background: rgba(255, 68, 68, 0.9);
+.diameter-line {
+  position: absolute;
+  height: 2px;
+  background: linear-gradient(90deg, #ffaa00, #ff8800);
+  border-radius: 1px;
+  pointer-events: auto;
+  cursor: move;
+  box-shadow: 0 2px 4px rgba(255, 170, 0, 0.3);
+}
+
+.diameter-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #ffaa00;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  cursor: ew-resize;
+  top: -5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.diameter-handle.left {
+  left: -6px;
+}
+
+.diameter-handle.right {
+  right: -6px;
+}
+
+.diameter-value {
+  position: absolute;
+  top: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 170, 0, 0.9);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
   font-weight: bold;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .diameter-value.small {
@@ -2476,6 +3372,32 @@ const cleanup = () => {
   z-index: 15;
   width: 100%;
   height: 100%;
+}
+
+/* 测量模式样式 */
+.measurement-mode {
+  position: relative;
+}
+
+.measurement-mode-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 170, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 20;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.measurement-mode-indicator .el-icon {
+  font-size: 14px;
 }
 
 /* 响应式调整 */
