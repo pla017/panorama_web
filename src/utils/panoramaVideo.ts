@@ -7,6 +7,7 @@ export interface PanoramaVideoViewer {
   seekTo: (time: number) => void
   seekToImmediate: (time: number) => void
   setAutoRotate: (enabled: boolean) => void
+  setPlaybackRate: (rate: number) => void
   rotate: (deltaX: number, deltaY: number) => void
   zoom: (delta: number) => void
   resetView: () => void
@@ -207,6 +208,12 @@ export async function initPanoramaVideoViewer(
     controls.autoRotate = enabled
   }
 
+  const setPlaybackRate = (rate: number) => {
+    if (video) {
+      video.playbackRate = rate
+    }
+  }
+
   const rotate = (deltaX: number, deltaY: number) => {
     // 通过调整相机旋转角度实现旋转
     const spherical = new THREE.Spherical()
@@ -284,6 +291,7 @@ export async function initPanoramaVideoViewer(
     seekTo,
     seekToImmediate,
     setAutoRotate,
+    setPlaybackRate,
     rotate,
     zoom,
     resetView,

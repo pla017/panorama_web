@@ -69,22 +69,18 @@
               title="截图"
               circle
             />
-            <div class="speed-control">
-              <el-dropdown @command="changePlaybackRate" trigger="click">
-                <el-button class="control-btn speed-btn" circle>
-                  <span class="speed-text">{{ playbackRate }}x</span>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item :command="0.5">0.5x</el-dropdown-item>
-                    <el-dropdown-item :command="0.75">0.75x</el-dropdown-item>
-                    <el-dropdown-item :command="1">1x</el-dropdown-item>
-                    <el-dropdown-item :command="1.25">1.25x</el-dropdown-item>
-                    <el-dropdown-item :command="1.5">1.5x</el-dropdown-item>
-                    <el-dropdown-item :command="2">2x</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
+            <div class="speed-control" @click.stop="toggleSpeedMenu">
+              <el-button class="control-btn speed-btn">
+                {{ playbackRate }}x
+              </el-button>
+              <!-- 自定义下拉菜单 -->
+              <div v-show="showSpeedMenu" class="custom-speed-menu" @click.stop>
+                <div class="speed-option" @click="selectSpeed(0.5)">0.5x</div>
+                <div class="speed-option" @click="selectSpeed(1.0)">1.0x</div>
+                <div class="speed-option" @click="selectSpeed(1.5)">1.5x</div>
+                <div class="speed-option" @click="selectSpeed(2.0)">2.0x</div>
+                <div class="speed-option" @click="selectSpeed(2.5)">2.5x</div>
+              </div>
             </div>
           </div>
         </div>
@@ -210,9 +206,10 @@ const currentTime = ref(0)
 const duration = ref(0)
 const playProgress = ref(0)
 const bufferProgress = ref(0)
-const playbackRate = ref(1)
+const playbackRate = ref(1.0)
 const volume = ref(1)
 const isDragging = ref(false)
+const showSpeedMenu = ref(false)
 
 // Three.js 相关
 let scene: THREE.Scene
@@ -550,8 +547,30 @@ const seekBackward = () => {
 
 // 改变播放速度
 const changePlaybackRate = (rate: number) => {
+  console.log('改变播放速度:', rate)
   if (!videoRef.value) return
   videoRef.value.playbackRate = rate
+  playbackRate.value = rate
+  console.log('当前播放速度:', playbackRate.value)
+}
+
+// 切换倍速菜单显示
+const toggleSpeedMenu = () => {
+  showSpeedMenu.value = !showSpeedMenu.value
+}
+
+// 选择倍速
+const selectSpeed = (rate: number) => {
+  changePlaybackRate(rate)
+  showSpeedMenu.value = false
+}
+
+// 点击外部关闭菜单
+const handleClickOutside = (event: Event) => {
+  const speedControl = event.target as HTMLElement
+  if (!speedControl.closest('.speed-control')) {
+    showSpeedMenu.value = false
+  }
 }
 
 // 改变音量
@@ -651,6 +670,8 @@ const formatTime = (seconds: number): string => {
 // 组件挂载
 onMounted(() => {
   // 不再自动播放，等待用户点击
+  // 添加点击外部关闭菜单的事件监听
+  document.addEventListener('click', handleClickOutside)
 })
 
 // 组件卸载
@@ -659,6 +680,7 @@ onUnmounted(() => {
     renderer.dispose()
   }
   window.removeEventListener('resize', onWindowResize)
+  document.removeEventListener('click', handleClickOutside)
   clearTimeout(controlsHideTimer)
 })
 </script>
@@ -666,8 +688,8 @@ onUnmounted(() => {
 <style scoped>
 .panorama-video-viewer {
   width: 100%;
-  height: 100%;
-  min-height: 400px;
+  aspect-ratio: 16 / 9;
+  max-height: 100%;
   position: relative;
   background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
   border-radius: 0;
@@ -918,14 +940,66 @@ onUnmounted(() => {
 }
 
 .speed-btn {
-  width: 40px !important;
+  min-width: 50px !important;
   height: 40px !important;
+  font-size: 12px !important;
+  padding: 0 8px !important;
+  border-radius: 6px !important;
+  color: white !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.speed-btn span {
+  color: white !important;
   font-size: 12px !important;
 }
 
-.speed-text {
+.speed-control {
+  position: relative;
+  z-index: 1001;
+}
+
+/* 自定义倍速菜单 */
+.custom-speed-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 8px 0;
+  margin-bottom: 8px;
+  min-width: 60px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+}
+
+.speed-option {
+  padding: 8px 16px;
+  color: white;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-align: center;
+}
+
+.speed-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.speed-option:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.speed-text {
+  font-size: 12px !important;
+  font-weight: bold !important;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8) !important;
 }
 
 /* 进度条区域 */
@@ -1078,7 +1152,7 @@ onUnmounted(() => {
 .volume-control {
   position: absolute;
   right: 24px;
-  top: 50%;
+  top: 30%;
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
@@ -1257,6 +1331,8 @@ onUnmounted(() => {
   background: rgba(0, 0, 0, 0.9) !important;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  z-index: 9999 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
 }
 
 :deep(.el-dropdown-menu__item) {
@@ -1264,6 +1340,32 @@ onUnmounted(() => {
 }
 
 :deep(.el-dropdown-menu__item:hover) {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+:deep(.el-popper) {
+  z-index: 9999 !important;
+}
+
+:deep(.el-dropdown) {
+  position: relative;
+}
+
+/* 自定义速度下拉框样式 */
+:deep(.speed-dropdown-popper) {
+  z-index: 9999 !important;
+  background: rgba(0, 0, 0, 0.9) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+}
+
+:deep(.speed-dropdown-popper .el-dropdown-menu__item) {
+  color: white !important;
+  background: transparent !important;
+}
+
+:deep(.speed-dropdown-popper .el-dropdown-menu__item:hover) {
   background: rgba(255, 255, 255, 0.1) !important;
 }
 

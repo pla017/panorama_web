@@ -533,11 +533,13 @@ onUnmounted(() => {
 }
 
 .panorama-viewer-wrapper {
-  flex: 1;
   position: relative;
-  min-height: 400px;
   background: #000;
-  border-radius: 0 0 8px 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* padding: 10px; */
 }
 
 

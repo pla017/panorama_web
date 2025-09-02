@@ -34,6 +34,24 @@
         />
         <span class="time-display">{{ formatTime(videoProgress) }} / {{ formatTime(videoDuration) }}</span>
       </div>
+
+      <div class="control-group">
+        <span class="control-label">播放倍速:</span>
+        <el-dropdown @command="changePlaybackRate" trigger="click">
+          <el-button size="small">
+            {{ playbackRate }}x <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item :command="0.5">0.5x</el-dropdown-item>
+              <el-dropdown-item :command="1.0">1.0x</el-dropdown-item>
+              <el-dropdown-item :command="1.5">1.5x</el-dropdown-item>
+              <el-dropdown-item :command="2.0">2.0x</el-dropdown-item>
+              <el-dropdown-item :command="2.5">2.5x</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
     </div>
 
     <!-- Three.js 渲染容器 -->
@@ -91,7 +109,8 @@ import {
   VideoPause, 
   Refresh, 
   Warning,
-  Loading
+  Loading,
+  ArrowDown
 } from '@element-plus/icons-vue'
 import { initPanoramaVideoViewer, type PanoramaVideoViewer } from '@/utils/panoramaVideo'
 
@@ -106,6 +125,7 @@ const isPlaying = ref(false)
 const autoRotate = ref(false)
 const videoProgress = ref(0)
 const videoDuration = ref(0)
+const playbackRate = ref(1.0)
 
 const videoInfo = ref({
   width: 0,
@@ -305,13 +325,26 @@ const onWheel = (event: WheelEvent) => {
   const delta = event.deltaY * 0.001
   panoramaVideoViewer.zoom(delta)
 }
+
+// 改变播放倍速
+const changePlaybackRate = (rate: number) => {
+  if (!panoramaVideoViewer) return
+  panoramaVideoViewer.setPlaybackRate(rate)
+  playbackRate.value = rate
+}
 </script>
 
 <style scoped>
 .panorama-video-viewer {
-  height: 100%;
+  width: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.viewer-container {
+  aspect-ratio: 16 / 9;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .control-panel {
@@ -344,7 +377,6 @@ const onWheel = (event: WheelEvent) => {
 }
 
 .viewer-container {
-  flex: 1;
   position: relative;
   background: #000;
   cursor: grab;
