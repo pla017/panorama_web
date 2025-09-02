@@ -1,44 +1,45 @@
 <template>
   <div class="analyzer-app">
-    <!-- 顶部导航栏 -->
-    <div class="top-navbar">
-      <div class="navbar-left">
-        <div class="logo">
-          <span class="logo-text">ANALYZER</span>
+    <!-- 左侧侧边栏 -->
+    <div class="left-sidebar">
+      <!-- ANALYZER 标题 -->
+      <div class="sidebar-header">
+        <div class="analyzer-logo">ANALYZER</div>
+      </div>
+
+      <!-- 导航按钮组 -->
+      <div class="sidebar-nav">
+        <div class="nav-button" @click="setActiveView('home')">
+          <span>HOME</span>
+        </div>
+        <div class="nav-button" @click="setActiveView('project')">
+          <span>PROJECT</span>
+        </div>
+        <div class="nav-button" @click="setActiveView('upload')">
+          <span>UPLOAD</span>
+        </div>
+        <div class="nav-button current" @click="setActiveView('review')">
+          <span>REVIEW</span>
+        </div>
+        <div class="nav-button" @click="setActiveView('analyzer')">
+          <span>ANALYZER</span>
+        </div>
+        <div class="nav-button" @click="setActiveView('download')">
+          <span>DOWNLOAD</span>
         </div>
       </div>
-      <div class="navbar-center">
-        <div class="view-tabs">
-          <div
-            :class="['tab-item', { active: activeTab === 'unfoldingView' }]"
-            @click="activeTab = 'unfoldingView'"
-          >
-            UNFOLDING VIEW
-          </div>
-          <div
-            :class="['tab-item', { active: activeTab === '3dModel' }]"
-            @click="activeTab = '3dModel'"
-          >
-            3D MODEL
-          </div>
+
+      <!-- 底部按钮组 -->
+      <div class="sidebar-bottom">
+        <div class="nav-button" @click="setActiveView('share')">
+          <span>SHARE</span>
         </div>
-        <div class="project-selector">
-          <el-select
-            v-model="selectedProject"
-            placeholder="Project2"
-            size="small"
-          >
-            <el-option label="Project1" value="project1" />
-            <el-option label="Project2" value="project2" />
-            <el-option label="Project3" value="project3" />
-          </el-select>
+        <div class="nav-button" @click="setActiveView('account')">
+          <span>ACCOUNT</span>
         </div>
-      </div>
-      <div class="navbar-right">
-        <span class="panorama-label">全景视频</span>
-        <el-button size="small" text>
-          <el-icon><Menu /></el-icon>
-        </el-button>
+        <div class="nav-button" @click="setActiveView('help')">
+          <span>HELP</span>
+        </div>
       </div>
     </div>
 
@@ -121,6 +122,8 @@
         </div>
       </div>
     </div>
+
+
   </div>
 </template>
 
@@ -160,6 +163,7 @@ const loadingPoints = ref(false);
 // UI状态
 const activeTab = ref("3dModel");
 const selectedProject = ref("project2");
+const currentView = ref("review");
 
 
 
@@ -178,6 +182,12 @@ const resetView = () => {
     controls.target.set(0, 0, 0);
     controls.update();
   }
+};
+
+// 设置当前视图
+const setActiveView = (view: string) => {
+  currentView.value = view;
+  console.log('切换到视图:', view);
 };
 
 // 3D模型相关函数
@@ -370,72 +380,75 @@ onUnmounted(() => {
 .analyzer-app {
   height: 100vh;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   background: #f5f7fa;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  position: relative;
 }
 
-/* 顶部导航栏 */
-.top-navbar {
-  height: 60px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+/* 左侧侧边栏 */
+.left-sidebar {
+  width: 120px;
+  height: 100vh;
+  background: #f0f0f0;
+  border-right: 1px solid #ddd;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  flex-direction: column;
+  flex-shrink: 0;
 }
 
-.navbar-left .logo-text {
-  font-size: 20px;
+.sidebar-header {
+  padding: 15px 0;
+  text-align: center;
+  border-bottom: 1px solid #ddd;
+  background: #e8e8e8;
+}
+
+.analyzer-logo {
+  font-size: 12px;
   font-weight: bold;
+  color: #666;
   letter-spacing: 1px;
 }
 
-.navbar-center {
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-button {
   display: flex;
   align-items: center;
-  gap: 32px;
-}
-
-.view-tabs {
-  display: flex;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.tab-item {
-  padding: 8px 20px;
+  justify-content: center;
+  padding: 12px 8px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  font-size: 11px;
+  color: #666;
+  border-bottom: 1px solid #ddd;
 }
 
-.tab-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.tab-item.active {
-  background: #ffd700;
+.nav-button:hover {
+  background: #e0e0e0;
   color: #333;
 }
 
-.project-selector {
-  min-width: 120px;
+.nav-button.current {
+  background: #ffd700;
+  color: #333;
+  font-weight: bold;
 }
 
-.navbar-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.panorama-label {
-  font-size: 14px;
+.nav-button span {
   font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-bottom {
+  border-top: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 主要布局 */
@@ -610,24 +623,21 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
-  .navbar-center {
-    gap: 16px;
+  .left-sidebar {
+    width: 80px;
   }
-
-  .view-tabs .tab-item {
-    padding: 6px 12px;
-    font-size: 12px;
+  
+  .analyzer-logo {
+    font-size: 10px;
   }
-
-  .section-controls {
-    flex-wrap: wrap;
-    gap: 8px;
+  
+  .nav-button {
+    padding: 8px 4px;
+    font-size: 9px;
   }
-
-  .search-input {
-    width: 150px;
+  
+  .nav-button span {
+    font-size: 9px;
   }
-
-
 }
 </style>
