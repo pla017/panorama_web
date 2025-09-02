@@ -13,21 +13,21 @@
       </div>
 
       <!-- 播放按钮（未开始播放时显示） -->
-      <div v-if="!hasStarted && !loading" class="initial-play-overlay">
+      <!-- <div v-if="!hasStarted && !loading" class="initial-play-overlay">
         <div class="play-button-large" @click="startPlaying">
           <el-icon class="play-icon"><VideoPlay /></el-icon>
         </div>
         <p class="play-hint">点击开始播放全景视频</p>
-      </div>
+      </div> -->
       
-      <!-- 控制面板 -->
-      <div 
+   
+       <!-- <div 
         class="controls-overlay" 
         :class="{ 'show': showControls && hasStarted }"
         @mouseenter="onControlsMouseEnter"
         @mouseleave="onControlsMouseLeave"
       >
-        <!-- 顶部控制区域 -->
+     
         <div class="top-controls">
           <div class="control-group left">
             <div class="time-display">
@@ -73,7 +73,7 @@
               <el-button class="control-btn speed-btn">
                 {{ playbackRate }}x
               </el-button>
-              <!-- 自定义下拉菜单 -->
+           
               <div v-show="showSpeedMenu" class="custom-speed-menu" @click.stop>
                 <div class="speed-option" @click="selectSpeed(0.5)">0.5x</div>
                 <div class="speed-option" @click="selectSpeed(1.0)">1.0x</div>
@@ -85,20 +85,20 @@
           </div>
         </div>
 
-        <!-- 进度条区域 -->
+  
         <div class="progress-area">
           <div class="progress-container" ref="progressRef" @click="seekTo">
-            <!-- 进度条背景 -->
+            
             <div class="progress-track">
-              <!-- 缓冲进度 -->
+           
               <div class="buffer-progress" :style="{ width: bufferProgress + '%' }"></div>
-              <!-- 播放进度 -->
+          
               <div class="play-progress" :style="{ width: playProgress + '%' }">
                 <div class="progress-glow"></div>
               </div>
             </div>
             
-            <!-- 截图标记点 -->
+        
             <div 
               v-for="(marker, index) in timeMarkers" 
               :key="index"
@@ -113,7 +113,7 @@
               </div>
             </div>
             
-            <!-- 进度条拖拽点 -->
+           
             <div 
               class="progress-handle" 
               :style="{ left: playProgress + '%' }"
@@ -123,10 +123,10 @@
             </div>
           </div>
         </div>
-      </div>
+      </div>  -->
 
       <!-- 音量控制 -->
-      <div class="volume-control" v-show="showControls && hasStarted">
+      <!-- <div class="volume-control" v-show="showControls && hasStarted">
         <div class="volume-slider-container">
           <el-slider
             v-model="volume"
@@ -145,7 +145,7 @@
           circle
           size="small"
         />
-      </div>
+      </div> -->
 
       <!-- 视角重置按钮 -->
       <div class="view-reset-btn" v-show="hasStarted">
@@ -184,8 +184,6 @@ import {
   Camera, 
   DArrowLeft, 
   DArrowRight,
-  Microphone,
-  Mute,
   Refresh
 } from '@element-plus/icons-vue'
 import * as THREE from 'three'
@@ -207,7 +205,7 @@ const duration = ref(0)
 const playProgress = ref(0)
 const bufferProgress = ref(0)
 const playbackRate = ref(1.0)
-const volume = ref(1)
+
 const isDragging = ref(false)
 const showSpeedMenu = ref(false)
 
@@ -573,17 +571,7 @@ const handleClickOutside = (event: Event) => {
   }
 }
 
-// 改变音量
-const changeVolume = (vol: number) => {
-  if (!videoRef.value) return
-  videoRef.value.volume = vol
-}
 
-// 静音切换
-const toggleMute = () => {
-  if (!videoRef.value) return
-  videoRef.value.muted = !videoRef.value.muted
-}
 
 // 截图功能
 const takeScreenshot = () => {
@@ -674,6 +662,36 @@ onMounted(() => {
   document.addEventListener('click', handleClickOutside)
 })
 
+// 暴露方法给父组件
+defineExpose({
+  togglePlay,
+  seekBackward,
+  seekForward,
+  takeScreenshot,
+  resetView,
+  seekTo: (time: number) => {
+    if (videoRef.value) {
+      videoRef.value.currentTime = time
+    }
+  },
+  // 暴露状态
+  isPlaying,
+  currentTime,
+  duration,
+  playProgress,
+  bufferProgress,
+  // 暴露状态获取方法
+  getState: () => ({
+    isPlaying: isPlaying.value,
+    currentTime: currentTime.value,
+    duration: duration.value,
+    playProgress: playProgress.value,
+    bufferProgress: bufferProgress.value
+  }),
+  // 暴露视频元素
+  getVideoElement: () => videoRef.value
+})
+
 // 组件卸载
 onUnmounted(() => {
   if (renderer) {
@@ -692,7 +710,7 @@ onUnmounted(() => {
   max-height: 100%;
   position: relative;
   background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
-  border-radius: 0;
+  border-radius: 8px;
   overflow: hidden;
 }
 

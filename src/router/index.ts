@@ -5,43 +5,13 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('@/views/Home.vue'),
+    component: () => import('@/views/Analyzer.vue'),
     meta: {
       title: '全景展示'
     }
   },
-  {
-    path: '/analyzer',
-    name: 'Analyzer',
-    component: () => import('@/views/Analyzer.vue'),
-    meta: {
-      title: 'Line AI Analyzer'
-    }
-  },
-  {
-    path: '/panorama',
-    name: 'Panorama',
-    component: () => import('@/views/Panorama.vue'),
-    meta: {
-      title: '全景浏览'
-    }
-  },
-  {
-    path: '/demo',
-    name: 'Demo',
-    component: () => import('@/views/Demo.vue'),
-    meta: {
-      title: '演示页面'
-    }
-  },
-  {
-    path: '/test',
-    name: 'Test',
-    component: () => import('@/views/Test.vue'),
-    meta: {
-      title: '功能测试'
-    }
-  }
+ 
+ 
 ]
 
 const router = createRouter({
