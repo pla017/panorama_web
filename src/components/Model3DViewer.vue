@@ -238,7 +238,7 @@
                 <button 
                   class="left-next w-14 h-14 hover:scale-110 transition-transform" 
                   @click="seekBackward"
-                  title="后退10秒"
+                  :title="`后退${seekInterval}秒`"
                 ></button>
                 <button 
                   class="play-btn w-14 h-14 hover:scale-110 transition-transform" 
@@ -249,7 +249,7 @@
                 <button 
                   class="right-btn w-14 h-14 hover:scale-110 transition-transform" 
                   @click="seekForward"
-                  title="前进10秒"
+                  :title="`前进${seekInterval}秒`"
                 ></button>
                 <button 
                   class="right-next w-14 h-14 hover:scale-110 transition-transform" 
@@ -272,14 +272,66 @@
               ></button>
               <button 
                 class="canvas-btn w-14 h-14 hover:scale-110 transition-transform" 
-                @click="toggleFullscreen"
-                title="全屏"
+                @click="toggleVideoFullscreen"
+                title="视频全屏"
               ></button>
-              <button 
-                class="bet-btn w-14 h-14 hover:scale-110 transition-transform" 
-                @click="showSettings"
-                title="设置"
-              ></button>
+              
+              <!-- 倍速控制 -->
+              <div class="relative">
+                <button 
+                  class="speed-control-btn w-14 h-14 hover:scale-110 transition-transform bg-gray-600 rounded-full flex items-center justify-center text-white text-xs font-bold" 
+                  @click="toggleSpeedMenu"
+                  :title="`播放速度: ${playbackSpeed}x`"
+                >
+                  {{ playbackSpeed }}x
+                </button>
+                
+                <!-- 倍速选择菜单 -->
+                <div 
+                  v-if="showSpeedMenu"
+                  class="speed-menu absolute bottom-16 right-0 bg-white rounded-lg shadow-lg border p-2 min-w-20 z-50"
+                  @click.stop
+                >
+                  <div 
+                    v-for="speed in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]"
+                    :key="speed"
+                    class="speed-option px-3 py-2 text-sm cursor-pointer rounded hover:bg-gray-100 text-center"
+                    :class="{ 'bg-blue-100 text-blue-600': playbackSpeed === speed }"
+                    @click="selectSpeed(speed)"
+                  >
+                    {{ speed }}x
+                  </div>
+                </div>
+              </div>
+              
+              <!-- 快进/快退设置 -->
+              <div class="relative">
+                <button 
+                  class="seek-settings-btn w-14 h-14 hover:scale-110 transition-transform bg-orange-600 rounded-full flex items-center justify-center text-white text-xs font-bold" 
+                  @click="toggleSeekSettings"
+                  :title="`快进/快退间隔: ${seekInterval}s`"
+                >
+                  {{ seekInterval }}s
+                </button>
+                
+                <!-- 快进/快退设置菜单 -->
+                <div 
+                  v-if="showSeekSettings"
+                  class="seek-menu absolute bottom-16 right-0 bg-white rounded-lg shadow-lg border p-2 min-w-20 z-50"
+                  @click.stop
+                >
+                  <div class="text-xs text-gray-500 px-2 py-1 border-b mb-1">快进/快退间隔</div>
+                  <div 
+                    v-for="interval in [10, 15, 20, 25, 30]"
+                    :key="interval"
+                    class="seek-option px-3 py-2 text-sm cursor-pointer rounded hover:bg-gray-100 text-center"
+                    :class="{ 'bg-orange-100 text-orange-600': seekInterval === interval }"
+                    @click="selectSeekInterval(interval)"
+                  >
+                    {{ interval }}s
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -312,6 +364,10 @@ const duration = ref(0);
 const playProgress = ref(0);
 const bufferProgress = ref(0);
 const isDragging = ref(false);
+const playbackSpeed = ref(1.0);
+const showSpeedMenu = ref(false);
+const seekInterval = ref(10); // 默认快进/快退10秒
+const showSeekSettings = ref(false);
 
 
 
@@ -534,17 +590,23 @@ const seekToEnd = () => {
   }
 };
 
-// 快退10秒
+// 快退（可自定义时间）
 const seekBackward = () => {
-  if (panoramaRef.value && panoramaRef.value.seekBackward) {
-    panoramaRef.value.seekBackward();
+  if (panoramaRef.value && panoramaRef.value.seekTo && currentTime.value > 0) {
+    const newTime = Math.max(0, currentTime.value - seekInterval.value);
+    panoramaRef.value.seekTo(newTime);
+    currentTime.value = newTime;
+    playProgress.value = duration.value > 0 ? (newTime / duration.value) * 100 : 0;
   }
 };
 
-// 快进10秒  
+// 快进（可自定义时间）
 const seekForward = () => {
-  if (panoramaRef.value && panoramaRef.value.seekForward) {
-    panoramaRef.value.seekForward();
+  if (panoramaRef.value && panoramaRef.value.seekTo && duration.value > 0) {
+    const newTime = Math.min(duration.value, currentTime.value + seekInterval.value);
+    panoramaRef.value.seekTo(newTime);
+    currentTime.value = newTime;
+    playProgress.value = (newTime / duration.value) * 100;
   }
 };
 
@@ -599,19 +661,46 @@ const shareVideo = () => {
   // 可以添加分享逻辑
 };
 
-// 全屏切换
-const toggleFullscreen = () => {
+// 视频全屏切换
+const toggleVideoFullscreen = () => {
   if (panoramaRef.value && panoramaRef.value.toggleFullscreen) {
     panoramaRef.value.toggleFullscreen();
+    ElMessage.success('切换视频全屏模式');
   } else {
-    ElMessage.info('全屏功能');
+    ElMessage.info('视频全屏功能');
   }
 };
 
-// 设置功能
-const showSettings = () => {
-  ElMessage.info('设置功能');
-  // 可以添加设置面板
+// 切换倍速菜单显示
+const toggleSpeedMenu = () => {
+  showSpeedMenu.value = !showSpeedMenu.value;
+  showSeekSettings.value = false; // 关闭其他菜单
+};
+
+// 选择播放速度
+const selectSpeed = (speed: number) => {
+  playbackSpeed.value = speed;
+  showSpeedMenu.value = false;
+  
+  // 同步到全景视频组件
+  if (panoramaRef.value && panoramaRef.value.setPlaybackRate) {
+    panoramaRef.value.setPlaybackRate(speed);
+  }
+  
+  ElMessage.success(`播放速度已设置为 ${speed}x`);
+};
+
+// 切换快进/快退设置菜单
+const toggleSeekSettings = () => {
+  showSeekSettings.value = !showSeekSettings.value;
+  showSpeedMenu.value = false; // 关闭其他菜单
+};
+
+// 选择快进/快退间隔
+const selectSeekInterval = (interval: number) => {
+  seekInterval.value = interval;
+  showSeekSettings.value = false;
+  ElMessage.success(`快进/快退间隔已设置为 ${interval}秒`);
 };
 
 // 跳转到标签位置
@@ -738,6 +827,15 @@ watch(() => duration.value, (newDuration) => {
   }
 });
 
+// 点击外部关闭菜单
+const handleClickOutside = (event: Event) => {
+  const target = event.target as HTMLElement;
+  if (!target.closest('.relative')) {
+    showSpeedMenu.value = false;
+    showSeekSettings.value = false;
+  }
+};
+
 onMounted(() => {
   nextTick(() => {
     initScene();
@@ -746,10 +844,15 @@ onMounted(() => {
       loadMeshModel();
     }, 1000);
   });
+  
+  // 监听点击外部关闭菜单
+  document.addEventListener('click', handleClickOutside);
 });
 
 onUnmounted(() => {
   cleanup();
+  // 清理事件监听
+  document.removeEventListener('click', handleClickOutside);
 });
 </script>
 
@@ -890,6 +993,73 @@ onUnmounted(() => {
 .play-progress {
   will-change: width;
   transition: width 0.1s ease;
+}
+
+/* 倍速控制按钮样式 */
+.speed-control-btn {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  border: 2px solid #6b7280;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.speed-control-btn:hover {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  border-color: #9ca3af;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 快进/快退设置按钮样式 */
+.seek-settings-btn {
+  background: linear-gradient(135deg, #ea580c 0%, #dc2626 100%);
+  border: 2px solid #f97316;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.seek-settings-btn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  border-color: #fb923c;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 菜单通用样式 */
+.speed-menu, .seek-menu {
+  animation: fadeInUp 0.2s ease-out;
+  backdrop-filter: blur(10px);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.speed-option, .seek-option {
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.speed-option:hover, .seek-option:hover {
+  background-color: #f3f4f6 !important;
+  transform: translateY(-1px);
+}
+
+.speed-option.bg-blue-100 {
+  background-color: #dbeafe !important;
+  color: #2563eb !important;
+  font-weight: 600;
+}
+
+.seek-option.bg-orange-100 {
+  background-color: #fed7aa !important;
+  color: #ea580c !important;
+  font-weight: 600;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @mixin button-bg($url) {

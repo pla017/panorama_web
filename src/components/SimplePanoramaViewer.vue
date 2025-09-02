@@ -689,7 +689,45 @@ defineExpose({
     bufferProgress: bufferProgress.value
   }),
   // 暴露视频元素
-  getVideoElement: () => videoRef.value
+  getVideoElement: () => videoRef.value,
+  // 设置播放速度
+  setPlaybackRate: (rate: number) => {
+    if (videoRef.value) {
+      videoRef.value.playbackRate = rate
+    }
+  },
+  // 获取播放速度
+  getPlaybackRate: () => {
+    return videoRef.value?.playbackRate || 1.0
+  },
+  // 视频全屏功能
+  toggleFullscreen: async () => {
+    if (!containerRef.value) return
+    
+    try {
+      if (!document.fullscreenElement) {
+        // 进入全屏
+        if (containerRef.value.requestFullscreen) {
+          await containerRef.value.requestFullscreen()
+        } else if ((containerRef.value as any).webkitRequestFullscreen) {
+          await (containerRef.value as any).webkitRequestFullscreen()
+        } else if ((containerRef.value as any).msRequestFullscreen) {
+          await (containerRef.value as any).msRequestFullscreen()
+        }
+      } else {
+        // 退出全屏
+        if (document.exitFullscreen) {
+          await document.exitFullscreen()
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen()
+        } else if ((document as any).msExitFullscreen) {
+          await (document as any).msExitFullscreen()
+        }
+      }
+    } catch (error) {
+      console.error('Fullscreen toggle error:', error)
+    }
+  }
 })
 
 // 组件卸载
