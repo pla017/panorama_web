@@ -30,85 +30,10 @@
       </div>
     </div>
 
-    <!-- 主要内容区域 -->
-    <!-- <div class="main-layout">
-      <div class="left-panel">
-        <div class="model-toolbar">
-          <div class="toolbar-group">
-            <el-button size="small" circle>
-              <el-icon><Position /></el-icon>
-            </el-button>
-            <el-button size="small" circle>
-              <el-icon><CopyDocument /></el-icon>
-            </el-button>
-            <el-button size="small" circle>
-              <el-icon><View /></el-icon>
-            </el-button>
-            <el-button
-              size="small"
-              circle
-              @click="loadMeshModel"
-              :loading="loadingMesh"
-            >
-              <el-icon><Box /></el-icon>
-            </el-button>
-            <el-button size="small" circle>
-              <el-icon><Compass /></el-icon>
-            </el-button>
-            <el-button size="small" circle>
-              <el-icon><FullScreen /></el-icon>
-            </el-button>
-            <el-button size="small" circle>
-              <el-icon><Setting /></el-icon>
-            </el-button>
-          </div>
-          <div class="toolbar-group">
-            <el-button
-              size="small"
-              @click="loadPointCloud"
-              :loading="loadingPoints"
-            >
-              点云
-            </el-button>
-            <el-button size="small" @click="resetView"> 重置 </el-button>
-          </div>
-        </div>
-
-        <div class="model-viewer-container">
-          <div ref="modelContainer" class="model-container">
-            <canvas ref="modelCanvas" class="model-canvas"></canvas>
-
-            <div v-if="loadingMesh || loadingPoints" class="loading-overlay">
-              <el-icon class="is-loading"><Loading /></el-icon>
-              <p>{{ loadingMesh ? "加载网格模型..." : "加载点云..." }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-     
-      <div class="right-panel">
-        <div class="panorama-section">
-          <div class="panorama-header">
-            <div class="section-title">
-              <span>全景视频</span>
-            </div>
-            <div class="panorama-controls">
-              <el-button size="small" text>
-                <el-icon><FullScreen /></el-icon>
-              </el-button>
-            </div>
-          </div>
-          <div class="panorama-viewer-wrapper">
-            <SimplePanoramaViewer />
-          </div>
-        </div>
-      </div>
-    </div> -->
-
-    <div class="grid grid-cols-[auto_55%] w-full p-5 mt-5">
+   
+    <div class="grid grid-cols-[minmax(380px,45%)_minmax(520px,55%)] w-full p-5 mt-5">
       <!-- left -->
-      <div class="p-2 flex flex-col gap-2">
+      <div class="p-2 flex flex-col gap-2 min-w-0 overflow-hidden">
         <div class="flex justify-between items-center">
           <span class="uppercase text-gray-500 text-lg">Review</span>
 
@@ -127,19 +52,12 @@
           </div>
         </div>
         <div class="d-viewer-container">
-          <!-- <div ref="modelContainer" class="model-container">
-            <canvas ref="modelCanvas" class="model-canvas"></canvas>
-
-            <div v-if="loadingMesh || loadingPoints" class="loading-overlay">
-              <el-icon class="is-loading"><Loading /></el-icon>
-              <p>{{ loadingMesh ? "加载网格模型..." : "加载点云..." }}</p>
-            </div>
-          </div> -->
+          <ThreeModelViewer />
         </div>
       </div>
 
       <!-- right -->
-      <div class="p-2 flex flex-col gap-2">
+      <div class="p-2 flex flex-col gap-2 min-w-0">
         <div class="w-full flex justify-between items-center">
           <div>
             <el-select
@@ -341,17 +259,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick, watch } from "vue";
-import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader.js";
+import { ref, onMounted, onUnmounted, watch } from "vue";
 import { ElMessage } from "element-plus";
 
 import SimplePanoramaViewer from "./SimplePanoramaViewer.vue";
+import ThreeModelViewer from "./ThreeModelViewer.vue";
 
-// 3D场景相关
-const modelContainer = ref<HTMLDivElement>();
-const modelCanvas = ref<HTMLCanvasElement>();
+// 3D 场景已抽离到 ThreeModelViewer 组件
 
 // 全景视频控制相关
 const panoramaRef = ref<any>();
@@ -398,21 +312,13 @@ const markerColors = [
 // 标签图标配置
 const markerIcons = ['📸', '🎯', '⭐', '🔥', '💎', '🎬', '📍', '✨'];
 
-let scene: THREE.Scene;
-let camera: THREE.PerspectiveCamera;
-let renderer: THREE.WebGLRenderer;
-let controls: OrbitControls;
-let animationId: number;
-
-// 模型状态
-const loadingMesh = ref(false);
+// 3D 相关状态已移除
 
 // UI状态
 const selectedProject = ref("project2");
 const currentView = ref("review");
 
-// 当前加载的模型
-let currentMesh: THREE.Mesh | null = null;
+// 当前加载的模型由 ThreeModelViewer 内部管理
 
 
 
@@ -422,140 +328,7 @@ const setActiveView = (view: string) => {
   console.log("切换到视图:", view);
 };
 
-// 3D模型相关函数
-const initScene = () => {
-  if (!modelContainer.value || !modelCanvas.value) return;
-
-  // 创建场景
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xf0f0f0);
-
-  // 创建相机
-  const aspect =
-    modelContainer.value.clientWidth / modelContainer.value.clientHeight;
-  camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
-  camera.position.set(5, 5, 5);
-
-  // 创建渲染器
-  renderer = new THREE.WebGLRenderer({
-    canvas: modelCanvas.value,
-    antialias: true,
-  });
-  renderer.setSize(
-    modelContainer.value.clientWidth,
-    modelContainer.value.clientHeight
-  );
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-  // 创建控制器
-  controls = new OrbitControls(camera, modelCanvas.value);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.05;
-
-  // 添加光照
-  const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
-  scene.add(ambientLight);
-
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  directionalLight.position.set(10, 10, 5);
-  scene.add(directionalLight);
-
-  // 添加网格辅助线
-  const gridHelper = new THREE.GridHelper(10, 10);
-  scene.add(gridHelper);
-
-  // 开始渲染循环
-  animate();
-};
-
-const animate = () => {
-  animationId = requestAnimationFrame(animate);
-
-  if (controls) {
-    controls.update();
-  }
-
-  if (renderer && scene && camera) {
-    renderer.render(scene, camera);
-  }
-};
-
-const loadMeshModel = async () => {
-  loadingMesh.value = true;
-  try {
-    const loader = new PLYLoader();
-    const geometry = await new Promise<THREE.BufferGeometry>(
-      (resolve, reject) => {
-        loader.load("/Out/mesh.ply", resolve, undefined, reject);
-      }
-    );
-
-    if (currentMesh) {
-      scene.remove(currentMesh);
-    }
-
-    if (!geometry.attributes.normal) {
-      geometry.computeVertexNormals();
-    }
-
-    const material = new THREE.MeshLambertMaterial({
-      color: geometry.attributes.color ? 0xffffff : 0x00aa00,
-      vertexColors: !!geometry.attributes.color,
-      side: THREE.DoubleSide,
-    });
-
-    currentMesh = new THREE.Mesh(geometry, material);
-    scene.add(currentMesh);
-
-    // 调整相机位置
-    const box = new THREE.Box3().setFromObject(currentMesh);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-
-    if (maxDim > 0) {
-      camera.position.copy(center);
-      camera.position.x += maxDim * 1.5;
-      camera.position.y += maxDim * 1.5;
-      camera.position.z += maxDim * 1.5;
-      camera.lookAt(center);
-      controls.target.copy(center);
-      controls.update();
-    }
-
-    ElMessage.success("网格模型加载完成！");
-  } catch (error) {
-    ElMessage.error(`网格模型加载失败: ${error}`);
-  } finally {
-    loadingMesh.value = false;
-  }
-};
-
-
-
-const cleanup = () => {
-  if (animationId) {
-    cancelAnimationFrame(animationId);
-  }
-
-  if (controls) {
-    controls.dispose();
-  }
-
-  if (renderer) {
-    renderer.dispose();
-  }
-};
-
-onMounted(() => {
-  nextTick(() => {
-    initScene();
-    // 默认加载网格模型
-    setTimeout(() => {
-      loadMeshModel();
-    }, 1000);
-  });
-});
+// 3D 模型交互由 ThreeModelViewer 负责
 
 // 格式化时间显示
 const formatTime = (seconds: number): string => {
@@ -837,20 +610,11 @@ const handleClickOutside = (event: Event) => {
 };
 
 onMounted(() => {
-  nextTick(() => {
-    initScene();
-    // 默认加载网格模型
-    setTimeout(() => {
-      loadMeshModel();
-    }, 1000);
-  });
-  
   // 监听点击外部关闭菜单
   document.addEventListener('click', handleClickOutside);
 });
 
 onUnmounted(() => {
-  cleanup();
   // 清理事件监听
   document.removeEventListener('click', handleClickOutside);
 });

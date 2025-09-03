@@ -12,119 +12,6 @@
         <p class="loading-text">正在加载全景视频...</p>
       </div>
 
-      <!-- 播放按钮（未开始播放时显示） -->
-      <!-- <div v-if="!hasStarted && !loading" class="initial-play-overlay">
-        <div class="play-button-large" @click="startPlaying">
-          <el-icon class="play-icon"><VideoPlay /></el-icon>
-        </div>
-        <p class="play-hint">点击开始播放全景视频</p>
-      </div> -->
-      
-   
-       <!-- <div 
-        class="controls-overlay" 
-        :class="{ 'show': showControls && hasStarted }"
-        @mouseenter="onControlsMouseEnter"
-        @mouseleave="onControlsMouseLeave"
-      >
-     
-        <div class="top-controls">
-          <div class="control-group left">
-            <div class="time-display">
-              <span class="current-time">{{ formatTime(currentTime) }}</span>
-              <span class="separator">/</span>
-              <span class="total-time">{{ formatTime(duration) }}</span>
-            </div>
-          </div>
-          
-          <div class="control-group center">
-            <el-button 
-              :icon="DArrowLeft" 
-              @click="seekBackward" 
-              class="control-btn seek-btn"
-              title="后退10秒"
-              circle
-            />
-            <el-button 
-              :icon="isPlaying ? VideoPause : VideoPlay" 
-              @click="togglePlay"
-              class="control-btn play-btn-main"
-              size="large"
-              circle
-            />
-            <el-button 
-              :icon="DArrowRight" 
-              @click="seekForward" 
-              class="control-btn seek-btn"
-              title="前进10秒"
-              circle
-            />
-          </div>
-
-          <div class="control-group right">
-            <el-button 
-              :icon="Camera" 
-              @click="takeScreenshot"
-              class="control-btn"
-              title="截图"
-              circle
-            />
-            <div class="speed-control" @click.stop="toggleSpeedMenu">
-              <el-button class="control-btn speed-btn">
-                {{ playbackRate }}x
-              </el-button>
-           
-              <div v-show="showSpeedMenu" class="custom-speed-menu" @click.stop>
-                <div class="speed-option" @click="selectSpeed(0.5)">0.5x</div>
-                <div class="speed-option" @click="selectSpeed(1.0)">1.0x</div>
-                <div class="speed-option" @click="selectSpeed(1.5)">1.5x</div>
-                <div class="speed-option" @click="selectSpeed(2.0)">2.0x</div>
-                <div class="speed-option" @click="selectSpeed(2.5)">2.5x</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-  
-        <div class="progress-area">
-          <div class="progress-container" ref="progressRef" @click="seekTo">
-            
-            <div class="progress-track">
-           
-              <div class="buffer-progress" :style="{ width: bufferProgress + '%' }"></div>
-          
-              <div class="play-progress" :style="{ width: playProgress + '%' }">
-                <div class="progress-glow"></div>
-              </div>
-            </div>
-            
-        
-            <div 
-              v-for="(marker, index) in timeMarkers" 
-              :key="index"
-              class="time-marker"
-              :style="{ left: (marker.time / duration) * 100 + '%' }"
-              @click.stop="seekToMarker(marker.time)"
-            >
-              <div class="marker-dot"></div>
-              <div class="marker-tooltip">
-                <img :src="marker.thumbnail" alt="截图" />
-                <span>{{ formatTime(marker.time) }}</span>
-              </div>
-            </div>
-            
-           
-            <div 
-              class="progress-handle" 
-              :style="{ left: playProgress + '%' }"
-              @mousedown="startDrag"
-            >
-              <div class="handle-dot"></div>
-            </div>
-          </div>
-        </div>
-      </div>  -->
-
       <!-- 音量控制 -->
       <!-- <div class="volume-control" v-show="showControls && hasStarted">
         <div class="volume-slider-container">
@@ -149,8 +36,8 @@
 
       <!-- 视角重置按钮 -->
       <div class="view-reset-btn" v-show="hasStarted">
-        <el-button 
-          @click="resetView" 
+        <el-button
+          @click="resetView"
           class="reset-btn"
           circle
           size="small"
@@ -162,7 +49,7 @@
     </div>
 
     <!-- 隐藏的视频元素用于播放 -->
-    <video 
+    <video
       ref="videoRef"
       :src="videoSrc"
       muted
@@ -171,496 +58,507 @@
       @timeupdate="onTimeUpdate"
       @progress="onProgress"
       @ended="onVideoEnded"
-      style="display: none;"
+      style="display: none"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
-import { 
-  VideoPlay, 
-  VideoPause, 
-  Camera, 
-  DArrowLeft, 
+import { ref, onMounted, onUnmounted, nextTick } from "vue";
+import {
+  VideoPlay,
+  VideoPause,
+  Camera,
+  DArrowLeft,
   DArrowRight,
-  Refresh
-} from '@element-plus/icons-vue'
-import * as THREE from 'three'
-import { ElMessage } from 'element-plus'
+  Refresh,
+} from "@element-plus/icons-vue";
+import * as THREE from "three";
+import { ElMessage } from "element-plus";
 
 // 引用
-const containerRef = ref<HTMLDivElement>()
-const videoRef = ref<HTMLVideoElement>()
-const progressRef = ref<HTMLDivElement>()
+const containerRef = ref<HTMLDivElement>();
+const videoRef = ref<HTMLVideoElement>();
+const progressRef = ref<HTMLDivElement>();
 
 // 状态管理
-const loading = ref(true)
-const videoSrc = ref('/Out/stitched_output.mp4')
-const isPlaying = ref(false)
-const hasStarted = ref(false)
-const showControls = ref(false)
-const currentTime = ref(0)
-const duration = ref(0)
-const playProgress = ref(0)
-const bufferProgress = ref(0)
-const playbackRate = ref(1.0)
+const loading = ref(true);
+const videoSrc = ref("/Out/stitched_output.mp4");
+const isPlaying = ref(false);
+const hasStarted = ref(false);
+const showControls = ref(false);
+const currentTime = ref(0);
+const duration = ref(0);
+const playProgress = ref(0);
+const bufferProgress = ref(0);
+const playbackRate = ref(1.0);
 
-const isDragging = ref(false)
-const showSpeedMenu = ref(false)
+const isDragging = ref(false);
+const showSpeedMenu = ref(false);
 
 // Three.js 相关
-let scene: THREE.Scene
-let camera: THREE.PerspectiveCamera
-let renderer: THREE.WebGLRenderer
-let sphere: THREE.Mesh
-let videoTexture: THREE.VideoTexture
+let scene: THREE.Scene;
+let camera: THREE.PerspectiveCamera;
+let renderer: THREE.WebGLRenderer;
+let sphere: THREE.Mesh;
+let videoTexture: THREE.VideoTexture;
 
 // 截图标记
-const timeMarkers = ref<Array<{ time: number, thumbnail: string }>>([])
+const timeMarkers = ref<Array<{ time: number; thumbnail: string }>>([]);
 
 // 控制面板交互状态
-const isControlsHovered = ref(false)
+const isControlsHovered = ref(false);
 
 // 控制面板自动隐藏定时器
-let controlsHideTimer: NodeJS.Timeout
+let controlsHideTimer: NodeJS.Timeout;
 
 // 启动控制面板自动隐藏定时器
 const startControlsHideTimer = () => {
-  clearTimeout(controlsHideTimer)
-  
+  clearTimeout(controlsHideTimer);
+
   // 只有在播放状态且已开始播放时才启动定时器
   if (isPlaying.value && hasStarted.value) {
     controlsHideTimer = setTimeout(() => {
       // 检查所有条件，确保可以隐藏
       if (isPlaying.value && !isDragging.value && !isControlsHovered.value) {
-        showControls.value = false
-        console.log('控制面板已隐藏')
+        showControls.value = false;
+        console.log("控制面板已隐藏");
       } else {
-        console.log('控制面板隐藏被阻止:', {
+        console.log("控制面板隐藏被阻止:", {
           isPlaying: isPlaying.value,
           isDragging: isDragging.value,
-          isControlsHovered: isControlsHovered.value
-        })
+          isControlsHovered: isControlsHovered.value,
+        });
       }
-    }, 3000)
-    console.log('启动控制面板隐藏定时器')
+    }, 3000);
+    console.log("启动控制面板隐藏定时器");
   } else {
-    console.log('不启动定时器:', {
+    console.log("不启动定时器:", {
       isPlaying: isPlaying.value,
-      hasStarted: hasStarted.value
-    })
+      hasStarted: hasStarted.value,
+    });
   }
-}
+};
 
 // 显示控制面板并启动自动隐藏
 const showControlsWithAutoHide = () => {
-  if (!hasStarted.value) return
-  
-  showControls.value = true
-  startControlsHideTimer()
-}
+  if (!hasStarted.value) return;
+
+  showControls.value = true;
+  startControlsHideTimer();
+};
 
 // 鼠标/触摸控制
-let isMouseDown = false
-let mouseX = 0
-let mouseY = 0
-let lon = 0
-let lat = 0
-let phi = 0
-let theta = 0
+let isMouseDown = false;
+let mouseX = 0;
+let mouseY = 0;
+let lon = 0;
+let lat = 0;
+let phi = 0;
+let theta = 0;
 
 // 初始化 Three.js 场景
 const initThreeJS = () => {
-  if (!containerRef.value || !videoRef.value) return
+  if (!containerRef.value || !videoRef.value) return;
 
-  const container = containerRef.value
-  const video = videoRef.value
+  const container = containerRef.value;
+  const video = videoRef.value;
 
   // 创建场景
-  scene = new THREE.Scene()
+  scene = new THREE.Scene();
 
   // 创建相机
-  camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000)
-  camera.position.set(0, 0, 0)
+  camera = new THREE.PerspectiveCamera(
+    75,
+    container.clientWidth / container.clientHeight,
+    0.1,
+    1000
+  );
+  camera.position.set(0, 0, 0);
 
   // 创建渲染器
-  renderer = new THREE.WebGLRenderer({ antialias: true })
-  renderer.setSize(container.clientWidth, container.clientHeight)
-  renderer.setPixelRatio(window.devicePixelRatio)
-  container.appendChild(renderer.domElement)
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  container.appendChild(renderer.domElement);
 
   // 创建视频纹理
-  videoTexture = new THREE.VideoTexture(video)
-  videoTexture.minFilter = THREE.LinearFilter
-  videoTexture.magFilter = THREE.LinearFilter
+  videoTexture = new THREE.VideoTexture(video);
+  videoTexture.minFilter = THREE.LinearFilter;
+  videoTexture.magFilter = THREE.LinearFilter;
 
   // 创建球体几何体
-  const geometry = new THREE.SphereGeometry(500, 60, 40)
-  geometry.scale(-1, 1, 1) // 翻转几何体，使纹理在内部显示
+  const geometry = new THREE.SphereGeometry(500, 60, 40);
+  geometry.scale(-1, 1, 1); // 翻转几何体，使纹理在内部显示
 
   // 创建材质
-  const material = new THREE.MeshBasicMaterial({ map: videoTexture })
+  const material = new THREE.MeshBasicMaterial({ map: videoTexture });
 
   // 创建球体网格
-  sphere = new THREE.Mesh(geometry, material)
-  scene.add(sphere)
+  sphere = new THREE.Mesh(geometry, material);
+  scene.add(sphere);
 
   // 添加事件监听器
-  addEventListeners()
+  addEventListeners();
 
   // 开始渲染循环
-  animate()
-}
+  animate();
+};
 
 // 添加事件监听器
 const addEventListeners = () => {
-  const canvas = renderer.domElement
+  const canvas = renderer.domElement;
 
   // 鼠标事件
-  canvas.addEventListener('mousedown', onMouseDown)
-  canvas.addEventListener('mousemove', onMouseMove)
-  canvas.addEventListener('mouseup', onMouseUp)
-  canvas.addEventListener('wheel', onWheel)
+  canvas.addEventListener("mousedown", onMouseDown);
+  canvas.addEventListener("mousemove", onMouseMove);
+  canvas.addEventListener("mouseup", onMouseUp);
+  canvas.addEventListener("wheel", onWheel);
 
   // 触摸事件
-  canvas.addEventListener('touchstart', onTouchStart)
-  canvas.addEventListener('touchmove', onTouchMove)
-  canvas.addEventListener('touchend', onTouchEnd)
+  canvas.addEventListener("touchstart", onTouchStart);
+  canvas.addEventListener("touchmove", onTouchMove);
+  canvas.addEventListener("touchend", onTouchEnd);
 
   // 窗口大小变化
-  window.addEventListener('resize', onWindowResize)
+  window.addEventListener("resize", onWindowResize);
 
-  canvas.addEventListener('mousemove', showControlsWithAutoHide)
-  canvas.addEventListener('click', showControlsWithAutoHide)
-}
+  canvas.addEventListener("mousemove", showControlsWithAutoHide);
+  canvas.addEventListener("click", showControlsWithAutoHide);
+};
 
 // 鼠标按下
 const onMouseDown = (event: MouseEvent) => {
-  isMouseDown = true
-  mouseX = event.clientX
-  mouseY = event.clientY
-}
+  isMouseDown = true;
+  mouseX = event.clientX;
+  mouseY = event.clientY;
+};
 
 // 鼠标移动
 const onMouseMove = (event: MouseEvent) => {
-  if (!isMouseDown) return
+  if (!isMouseDown) return;
 
-  const deltaX = event.clientX - mouseX
-  const deltaY = event.clientY - mouseY
+  const deltaX = event.clientX - mouseX;
+  const deltaY = event.clientY - mouseY;
 
-  mouseX = event.clientX
-  mouseY = event.clientY
+  mouseX = event.clientX;
+  mouseY = event.clientY;
 
-  lon -= deltaX * 0.1
-  lat += deltaY * 0.1
+  lon -= deltaX * 0.1;
+  lat += deltaY * 0.1;
 
-  lat = Math.max(-85, Math.min(85, lat))
-  updateCamera()
-}
+  lat = Math.max(-85, Math.min(85, lat));
+  updateCamera();
+};
 
 // 鼠标释放
 const onMouseUp = () => {
-  isMouseDown = false
-}
+  isMouseDown = false;
+};
 
 // 滚轮缩放
 const onWheel = (event: WheelEvent) => {
-  event.preventDefault()
-  const fov = camera.fov + event.deltaY * 0.05
-  camera.fov = Math.max(10, Math.min(100, fov))
-  camera.updateProjectionMatrix()
-}
+  event.preventDefault();
+  const fov = camera.fov + event.deltaY * 0.05;
+  camera.fov = Math.max(10, Math.min(100, fov));
+  camera.updateProjectionMatrix();
+};
 
 // 触摸开始
 const onTouchStart = (event: TouchEvent) => {
   if (event.touches.length === 1) {
-    const touch = event.touches[0]
-    mouseX = touch.clientX
-    mouseY = touch.clientY
-    isMouseDown = true
+    const touch = event.touches[0];
+    mouseX = touch.clientX;
+    mouseY = touch.clientY;
+    isMouseDown = true;
   }
-}
+};
 
 // 触摸移动
 const onTouchMove = (event: TouchEvent) => {
   if (event.touches.length === 1 && isMouseDown) {
-    const touch = event.touches[0]
-    const deltaX = touch.clientX - mouseX
-    const deltaY = touch.clientY - mouseY
+    const touch = event.touches[0];
+    const deltaX = touch.clientX - mouseX;
+    const deltaY = touch.clientY - mouseY;
 
-    mouseX = touch.clientX
-    mouseY = touch.clientY
+    mouseX = touch.clientX;
+    mouseY = touch.clientY;
 
-    lon -= deltaX * 0.1
-    lat += deltaY * 0.1
+    lon -= deltaX * 0.1;
+    lat += deltaY * 0.1;
 
-    lat = Math.max(-85, Math.min(85, lat))
-    updateCamera()
+    lat = Math.max(-85, Math.min(85, lat));
+    updateCamera();
   }
-}
+};
 
 // 触摸结束
 const onTouchEnd = () => {
-  isMouseDown = false
-}
+  isMouseDown = false;
+};
 
 // 更新相机位置
 const updateCamera = () => {
-  phi = THREE.MathUtils.degToRad(90 - lat)
-  theta = THREE.MathUtils.degToRad(lon)
+  phi = THREE.MathUtils.degToRad(90 - lat);
+  theta = THREE.MathUtils.degToRad(lon);
 
-  const x = 500 * Math.sin(phi) * Math.cos(theta)
-  const y = 500 * Math.cos(phi)
-  const z = 500 * Math.sin(phi) * Math.sin(theta)
+  const x = 500 * Math.sin(phi) * Math.cos(theta);
+  const y = 500 * Math.cos(phi);
+  const z = 500 * Math.sin(phi) * Math.sin(theta);
 
-  camera.lookAt(new THREE.Vector3(x, y, z))
-}
+  camera.lookAt(new THREE.Vector3(x, y, z));
+};
 
 // 窗口大小变化
 const onWindowResize = () => {
-  if (!containerRef.value) return
+  if (!containerRef.value) return;
 
-  const container = containerRef.value
-  camera.aspect = container.clientWidth / container.clientHeight
-  camera.updateProjectionMatrix()
-  renderer.setSize(container.clientWidth, container.clientHeight)
-}
+  const container = containerRef.value;
+  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(container.clientWidth, container.clientHeight);
+};
 
 // 动画循环
 const animate = () => {
-  requestAnimationFrame(animate)
-  renderer.render(scene, camera)
-}
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+};
 
 // 视频加载完成
 const onVideoLoaded = () => {
-  if (!videoRef.value) return
-  
-  duration.value = videoRef.value.duration
-  loading.value = false
-  
+  if (!videoRef.value) return;
+
+  duration.value = videoRef.value.duration;
+  loading.value = false;
+
   // 初始化 Three.js 场景
   nextTick(() => {
-    initThreeJS()
-  })
-}
+    initThreeJS();
+  });
+};
 
 // 开始播放
 const startPlaying = () => {
-  if (!videoRef.value) return
-  
-  hasStarted.value = true
-  videoRef.value.play()
-  isPlaying.value = true
-  showControls.value = true
-  
+  if (!videoRef.value) return;
+
+  hasStarted.value = true;
+  videoRef.value.play();
+  isPlaying.value = true;
+  showControls.value = true;
+
   // 启动自动隐藏定时器
-  startControlsHideTimer()
-}
+  startControlsHideTimer();
+};
 
 // 重置视角
 const resetView = () => {
-  if (!camera) return
-  
+  if (!camera) return;
+
   // 重置相机位置和旋转
-  lon = 0
-  lat = 0
-  updateCamera()
-  
+  lon = 0;
+  lat = 0;
+  updateCamera();
+
   // 重置缩放
-  camera.fov = 75
-  camera.updateProjectionMatrix()
-  
-  ElMessage.success('视角已重置')
-}
+  camera.fov = 75;
+  camera.updateProjectionMatrix();
+
+  ElMessage.success("视角已重置");
+};
 
 // 播放/暂停切换
 const togglePlay = () => {
-  if (!videoRef.value) return
+  if (!videoRef.value) return;
 
   if (isPlaying.value) {
-    videoRef.value.pause()
-    isPlaying.value = false
+    videoRef.value.pause();
+    isPlaying.value = false;
     // 暂停时显示控制面板并停止自动隐藏
-    showControls.value = true
-    clearTimeout(controlsHideTimer)
+    showControls.value = true;
+    clearTimeout(controlsHideTimer);
   } else {
-    videoRef.value.play()
-    isPlaying.value = true
+    videoRef.value.play();
+    isPlaying.value = true;
     // 开始播放时启动自动隐藏
-    startControlsHideTimer()
+    startControlsHideTimer();
   }
-}
+};
 
 // 时间更新
 const onTimeUpdate = () => {
-  if (!videoRef.value || isDragging.value) return
-  
-  currentTime.value = videoRef.value.currentTime
-  playProgress.value = (currentTime.value / duration.value) * 100
-}
+  if (!videoRef.value || isDragging.value) return;
+
+  currentTime.value = videoRef.value.currentTime;
+  playProgress.value = (currentTime.value / duration.value) * 100;
+};
 
 // 缓冲进度更新
 const onProgress = () => {
-  if (!videoRef.value) return
-  
-  const buffered = videoRef.value.buffered
+  if (!videoRef.value) return;
+
+  const buffered = videoRef.value.buffered;
   if (buffered.length > 0) {
-    const bufferedEnd = buffered.end(buffered.length - 1)
-    bufferProgress.value = (bufferedEnd / duration.value) * 100
+    const bufferedEnd = buffered.end(buffered.length - 1);
+    bufferProgress.value = (bufferedEnd / duration.value) * 100;
   }
-}
+};
 
 // 视频结束
 const onVideoEnded = () => {
-  isPlaying.value = false
+  isPlaying.value = false;
   // 视频结束时显示控制面板
-  showControls.value = true
-}
+  showControls.value = true;
+};
 
 // 跳转到指定时间
 const seekTo = (event: MouseEvent) => {
-  if (!progressRef.value || !videoRef.value) return
+  if (!progressRef.value || !videoRef.value) return;
 
-  const rect = progressRef.value.getBoundingClientRect()
-  const percent = (event.clientX - rect.left) / rect.width
-  const seekTime = percent * duration.value
+  const rect = progressRef.value.getBoundingClientRect();
+  const percent = (event.clientX - rect.left) / rect.width;
+  const seekTime = percent * duration.value;
 
-  videoRef.value.currentTime = seekTime
-  currentTime.value = seekTime
-}
+  videoRef.value.currentTime = seekTime;
+  currentTime.value = seekTime;
+};
 
 // 快进
 const seekForward = () => {
-  if (!videoRef.value) return
-  videoRef.value.currentTime = Math.min(videoRef.value.currentTime + 10, duration.value)
-}
+  if (!videoRef.value) return;
+  videoRef.value.currentTime = Math.min(
+    videoRef.value.currentTime + 10,
+    duration.value
+  );
+};
 
 // 快退
 const seekBackward = () => {
-  if (!videoRef.value) return
-  videoRef.value.currentTime = Math.max(videoRef.value.currentTime - 10, 0)
-}
+  if (!videoRef.value) return;
+  videoRef.value.currentTime = Math.max(videoRef.value.currentTime - 10, 0);
+};
 
 // 改变播放速度
 const changePlaybackRate = (rate: number) => {
-  console.log('改变播放速度:', rate)
-  if (!videoRef.value) return
-  videoRef.value.playbackRate = rate
-  playbackRate.value = rate
-  console.log('当前播放速度:', playbackRate.value)
-}
+  console.log("改变播放速度:", rate);
+  if (!videoRef.value) return;
+  videoRef.value.playbackRate = rate;
+  playbackRate.value = rate;
+  console.log("当前播放速度:", playbackRate.value);
+};
 
 // 切换倍速菜单显示
 const toggleSpeedMenu = () => {
-  showSpeedMenu.value = !showSpeedMenu.value
-}
+  showSpeedMenu.value = !showSpeedMenu.value;
+};
 
 // 选择倍速
 const selectSpeed = (rate: number) => {
-  changePlaybackRate(rate)
-  showSpeedMenu.value = false
-}
+  changePlaybackRate(rate);
+  showSpeedMenu.value = false;
+};
 
 // 点击外部关闭菜单
 const handleClickOutside = (event: Event) => {
-  const speedControl = event.target as HTMLElement
-  if (!speedControl.closest('.speed-control')) {
-    showSpeedMenu.value = false
+  const speedControl = event.target as HTMLElement;
+  if (!speedControl.closest(".speed-control")) {
+    showSpeedMenu.value = false;
   }
-}
-
-
+};
 
 // 截图功能
 const takeScreenshot = () => {
-  if (!renderer || !videoRef.value) return
+  if (!renderer || !videoRef.value) return;
 
   // 渲染当前帧到canvas
-  renderer.render(scene, camera)
-  
+  renderer.render(scene, camera);
+
   // 获取canvas数据
-  const canvas = renderer.domElement
-  const dataURL = canvas.toDataURL('image/png')
-  
+  const canvas = renderer.domElement;
+  const dataURL = canvas.toDataURL("image/png");
+
   // 创建下载链接
-  const link = document.createElement('a')
-  link.download = `panorama_screenshot_${Date.now()}.png`
-  link.href = dataURL
-  link.click()
-  
+  const link = document.createElement("a");
+  link.download = `panorama_screenshot_${Date.now()}.png`;
+  link.href = dataURL;
+  link.click();
+
   // 添加时间标记
-  const thumbnail = dataURL
+  const thumbnail = dataURL;
   timeMarkers.value.push({
     time: currentTime.value,
-    thumbnail
-  })
-  
-  ElMessage.success('截图已保存')
-}
+    thumbnail,
+  });
+
+  ElMessage.success("截图已保存");
+};
 
 // 跳转到标记点
 const seekToMarker = (time: number) => {
-  if (!videoRef.value) return
-  videoRef.value.currentTime = time
-}
+  if (!videoRef.value) return;
+  videoRef.value.currentTime = time;
+};
 
 // 进度条拖拽
 const startDrag = () => {
-  isDragging.value = true
-  showControls.value = true
-  
+  isDragging.value = true;
+  showControls.value = true;
+
   const onDrag = (e: MouseEvent) => {
-    if (!progressRef.value || !videoRef.value) return
-    
-    const rect = progressRef.value.getBoundingClientRect()
-    const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-    const seekTime = percent * duration.value
-    
-    videoRef.value.currentTime = seekTime
-    currentTime.value = seekTime
-    playProgress.value = percent * 100
-  }
-  
+    if (!progressRef.value || !videoRef.value) return;
+
+    const rect = progressRef.value.getBoundingClientRect();
+    const percent = Math.max(
+      0,
+      Math.min(1, (e.clientX - rect.left) / rect.width)
+    );
+    const seekTime = percent * duration.value;
+
+    videoRef.value.currentTime = seekTime;
+    currentTime.value = seekTime;
+    playProgress.value = percent * 100;
+  };
+
   const onDragEnd = () => {
-    isDragging.value = false
-    document.removeEventListener('mousemove', onDrag)
-    document.removeEventListener('mouseup', onDragEnd)
-    
+    isDragging.value = false;
+    document.removeEventListener("mousemove", onDrag);
+    document.removeEventListener("mouseup", onDragEnd);
+
     // 拖拽结束后启动自动隐藏
-    startControlsHideTimer()
-  }
-  
-  document.addEventListener('mousemove', onDrag)
-  document.addEventListener('mouseup', onDragEnd)
-}
+    startControlsHideTimer();
+  };
+
+  document.addEventListener("mousemove", onDrag);
+  document.addEventListener("mouseup", onDragEnd);
+};
 
 // 控制面板鼠标事件
 const onControlsMouseEnter = () => {
-  isControlsHovered.value = true
-  clearTimeout(controlsHideTimer)
-}
+  isControlsHovered.value = true;
+  clearTimeout(controlsHideTimer);
+};
 
 const onControlsMouseLeave = () => {
-  isControlsHovered.value = false
+  isControlsHovered.value = false;
   // 鼠标离开控制面板后启动自动隐藏
-  startControlsHideTimer()
-}
+  startControlsHideTimer();
+};
 
 // 格式化时间
 const formatTime = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.floor(seconds % 60)
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-}
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins.toString().padStart(2, "0")}:${secs
+    .toString()
+    .padStart(2, "0")}`;
+};
 
 // 组件挂载
 onMounted(() => {
   // 不再自动播放，等待用户点击
   // 添加点击外部关闭菜单的事件监听
-  document.addEventListener('click', handleClickOutside)
-})
+  document.addEventListener("click", handleClickOutside);
+});
 
 // 暴露方法给父组件
 defineExpose({
@@ -671,7 +569,7 @@ defineExpose({
   resetView,
   seekTo: (time: number) => {
     if (videoRef.value) {
-      videoRef.value.currentTime = time
+      videoRef.value.currentTime = time;
     }
   },
   // 暴露状态
@@ -686,59 +584,59 @@ defineExpose({
     currentTime: currentTime.value,
     duration: duration.value,
     playProgress: playProgress.value,
-    bufferProgress: bufferProgress.value
+    bufferProgress: bufferProgress.value,
   }),
   // 暴露视频元素
   getVideoElement: () => videoRef.value,
   // 设置播放速度
   setPlaybackRate: (rate: number) => {
     if (videoRef.value) {
-      videoRef.value.playbackRate = rate
+      videoRef.value.playbackRate = rate;
     }
   },
   // 获取播放速度
   getPlaybackRate: () => {
-    return videoRef.value?.playbackRate || 1.0
+    return videoRef.value?.playbackRate || 1.0;
   },
   // 视频全屏功能
   toggleFullscreen: async () => {
-    if (!containerRef.value) return
-    
+    if (!containerRef.value) return;
+
     try {
       if (!document.fullscreenElement) {
         // 进入全屏
         if (containerRef.value.requestFullscreen) {
-          await containerRef.value.requestFullscreen()
+          await containerRef.value.requestFullscreen();
         } else if ((containerRef.value as any).webkitRequestFullscreen) {
-          await (containerRef.value as any).webkitRequestFullscreen()
+          await (containerRef.value as any).webkitRequestFullscreen();
         } else if ((containerRef.value as any).msRequestFullscreen) {
-          await (containerRef.value as any).msRequestFullscreen()
+          await (containerRef.value as any).msRequestFullscreen();
         }
       } else {
         // 退出全屏
         if (document.exitFullscreen) {
-          await document.exitFullscreen()
+          await document.exitFullscreen();
         } else if ((document as any).webkitExitFullscreen) {
-          await (document as any).webkitExitFullscreen()
+          await (document as any).webkitExitFullscreen();
         } else if ((document as any).msExitFullscreen) {
-          await (document as any).msExitFullscreen()
+          await (document as any).msExitFullscreen();
         }
       }
     } catch (error) {
-      console.error('Fullscreen toggle error:', error)
+      console.error("Fullscreen toggle error:", error);
     }
-  }
-})
+  },
+});
 
 // 组件卸载
 onUnmounted(() => {
   if (renderer) {
-    renderer.dispose()
+    renderer.dispose();
   }
-  window.removeEventListener('resize', onWindowResize)
-  document.removeEventListener('click', handleClickOutside)
-  clearTimeout(controlsHideTimer)
-})
+  window.removeEventListener("resize", onWindowResize);
+  document.removeEventListener("click", handleClickOutside);
+  clearTimeout(controlsHideTimer);
+});
 </script>
 
 <style scoped>
@@ -770,7 +668,11 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(26, 26, 26, 0.95) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(26, 26, 26, 0.95) 100%
+  );
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -835,7 +737,11 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 20px;
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, rgba(26, 26, 26, 0.7) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.7) 0%,
+    rgba(26, 26, 26, 0.7) 100%
+  );
   backdrop-filter: blur(2px);
   z-index: 999;
 }
@@ -856,11 +762,15 @@ onUnmounted(() => {
 }
 
 .play-button-large::before {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    transparent 100%
+  );
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -944,7 +854,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: 'Monaco', 'Menlo', monospace;
+  font-family: "Monaco", "Menlo", monospace;
   font-size: 14px;
   font-weight: 500;
 }
@@ -1108,7 +1018,11 @@ onUnmounted(() => {
   right: 0;
   width: 20px;
   height: 100%;
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.4) 100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 100%
+  );
   animation: progress-glow 2s ease-in-out infinite;
 }
 
@@ -1263,18 +1177,32 @@ onUnmounted(() => {
 
 /* 动画效果 */
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes progress-glow {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 @keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
 }
 
 /* 响应式设计 */
@@ -1282,46 +1210,46 @@ onUnmounted(() => {
   .controls-overlay {
     padding: 16px;
   }
-  
+
   .top-controls {
     margin-bottom: 16px;
   }
-  
+
   .control-group.left,
   .control-group.right {
     display: none;
   }
-  
+
   .control-group.center {
     flex: 1;
     justify-content: center;
   }
-  
+
   .play-btn-main {
     width: 48px !important;
     height: 48px !important;
   }
-  
+
   .seek-btn {
     width: 36px !important;
     height: 36px !important;
   }
-  
+
   .volume-control {
     right: 16px;
     padding: 12px 8px;
   }
-  
+
   .view-reset-btn {
     top: 16px;
     right: 16px;
   }
-  
+
   .play-button-large {
     width: 60px;
     height: 60px;
   }
-  
+
   .play-icon {
     font-size: 24px;
   }
@@ -1331,34 +1259,34 @@ onUnmounted(() => {
   .controls-overlay {
     padding: 12px;
   }
-  
+
   .top-controls {
     margin-bottom: 12px;
   }
-  
+
   .play-btn-main {
     width: 44px !important;
     height: 44px !important;
   }
-  
+
   .seek-btn {
     width: 32px !important;
     height: 32px !important;
   }
-  
+
   .control-group.center {
     gap: 12px;
   }
-  
+
   .play-button-large {
     width: 50px;
     height: 50px;
   }
-  
+
   .play-icon {
     font-size: 20px;
   }
-  
+
   .play-hint {
     font-size: 14px;
   }
