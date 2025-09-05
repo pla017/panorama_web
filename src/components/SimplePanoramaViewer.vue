@@ -67,6 +67,7 @@
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
 import { Refresh } from "@element-plus/icons-vue";
 import * as THREE from "three";
+import config from '@/config/resource'
 import { ElMessage } from "element-plus";
 
 // 引用
@@ -76,7 +77,7 @@ const videoRef = ref<HTMLVideoElement>();
 
 // 状态管理
 const loading = ref(true);
-const videoSrc = ref("/Out/stitched_output.mp4");
+const videoSrc = ref(config.video);
 const isPlaying = ref(false);
 const hasStarted = ref(false);
 const showControls = ref(false);

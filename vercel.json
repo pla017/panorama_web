@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/files/:path*",
+      "destination": "http://42.193.255.168/check/report/8005/files/:path*"
+    }
+  ]
+}

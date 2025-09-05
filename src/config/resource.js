@@ -1,13 +1,14 @@
 const isProd = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.PROD;
-const base = isProd ? 'http://42.193.255.168' : '/proxy';
+// 生产走同源 /files，经由 Vercel 重写至源站，避免 Mixed Content；开发使用 Vite 代理
+const base = isProd ? '/files' : '/proxy/check/report/8005/files';
 
 let config = {
-  file1: `${base}/check/report/8005/files/1_.xml`,
-  mesh: `${base}/check/report/8005/files/mesh.ply`,
-  meshImage: `${base}/check/report/8005/files/mesh0.png`,
-  sparsePoint: `${base}/check/report/8005/files/sparse_point.ply`,
-  video: `${base}/check/report/8005/files/stitched_output.mp4`,
-  image: `${base}/check/report/8005/files/20250827-184023.jpg`,
+  file1: `${base}/1_.xml`,
+  mesh: `${base}/mesh.ply`,
+  meshImage: `${base}/mesh0.png`,
+  sparsePoint: `${base}/sparse_point.ply`,
+  video: `${base}/stitched_output.mp4`,
+  image: `${base}/20250827-184023.jpg`,
 };
 
 export default config;

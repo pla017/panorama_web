@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import config from '@/config/resource'
 import type { Scene, Camera, WebGLRenderer } from 'three'
 
 export interface PanoramaScene {
@@ -19,15 +20,9 @@ export const usePanoramaStore = defineStore('panorama', () => {
   const scenes = ref<PanoramaScene[]>([
     {
       id: '1',
-      name: '客厅',
-      imageUrl: '/images/panorama/living-room.jpg',
-      description: '现代简约客厅'
-    },
-    {
-      id: '2',
-      name: '卧室',
-      imageUrl: '/images/panorama/bedroom.jpg',
-      description: '温馨卧室'
+      name: '默认场景',
+      imageUrl: config.image,
+      description: '线上资源场景'
     }
   ])
   
