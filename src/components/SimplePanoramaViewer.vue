@@ -65,21 +65,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from "vue";
-import {
-  VideoPlay,
-  VideoPause,
-  Camera,
-  DArrowLeft,
-  DArrowRight,
-  Refresh,
-} from "@element-plus/icons-vue";
+import { Refresh } from "@element-plus/icons-vue";
 import * as THREE from "three";
 import { ElMessage } from "element-plus";
 
 // 引用
 const containerRef = ref<HTMLDivElement>();
 const videoRef = ref<HTMLVideoElement>();
-const progressRef = ref<HTMLDivElement>();
+// 进度条相关 UI 暂未使用，移除对应引用
 
 // 状态管理
 const loading = ref(true);
@@ -91,7 +84,6 @@ const currentTime = ref(0);
 const duration = ref(0);
 const playProgress = ref(0);
 const bufferProgress = ref(0);
-const playbackRate = ref(1.0);
 
 const isDragging = ref(false);
 const showSpeedMenu = ref(false);
@@ -338,18 +330,7 @@ const onVideoLoaded = () => {
   });
 };
 
-// 开始播放
-const startPlaying = () => {
-  if (!videoRef.value) return;
-
-  hasStarted.value = true;
-  videoRef.value.play();
-  isPlaying.value = true;
-  showControls.value = true;
-
-  // 启动自动隐藏定时器
-  startControlsHideTimer();
-};
+// 初始播放 UI 已移除，保留播放控制由外部触发
 
 // 重置视角
 const resetView = () => {
@@ -411,17 +392,7 @@ const onVideoEnded = () => {
   showControls.value = true;
 };
 
-// 跳转到指定时间
-const seekTo = (event: MouseEvent) => {
-  if (!progressRef.value || !videoRef.value) return;
-
-  const rect = progressRef.value.getBoundingClientRect();
-  const percent = (event.clientX - rect.left) / rect.width;
-  const seekTime = percent * duration.value;
-
-  videoRef.value.currentTime = seekTime;
-  currentTime.value = seekTime;
-};
+// 进度条点击跳转逻辑已下线，保留由外部传入时间进行跳转
 
 // 快进
 const seekForward = () => {
@@ -438,25 +409,11 @@ const seekBackward = () => {
   videoRef.value.currentTime = Math.max(videoRef.value.currentTime - 10, 0);
 };
 
-// 改变播放速度
-const changePlaybackRate = (rate: number) => {
-  console.log("改变播放速度:", rate);
-  if (!videoRef.value) return;
-  videoRef.value.playbackRate = rate;
-  playbackRate.value = rate;
-  console.log("当前播放速度:", playbackRate.value);
-};
+// 倍速设置函数在当前模板未使用
 
-// 切换倍速菜单显示
-const toggleSpeedMenu = () => {
-  showSpeedMenu.value = !showSpeedMenu.value;
-};
+// 倍速菜单交互在当前模板未使用
 
-// 选择倍速
-const selectSpeed = (rate: number) => {
-  changePlaybackRate(rate);
-  showSpeedMenu.value = false;
-};
+// 倍速菜单交互在当前模板未使用
 
 // 点击外部关闭菜单
 const handleClickOutside = (event: Event) => {
@@ -493,65 +450,13 @@ const takeScreenshot = () => {
   ElMessage.success("截图已保存");
 };
 
-// 跳转到标记点
-const seekToMarker = (time: number) => {
-  if (!videoRef.value) return;
-  videoRef.value.currentTime = time;
-};
+// 标记点跳转功能未在当前模板中使用
 
-// 进度条拖拽
-const startDrag = () => {
-  isDragging.value = true;
-  showControls.value = true;
+// 进度条拖拽交互已移除
 
-  const onDrag = (e: MouseEvent) => {
-    if (!progressRef.value || !videoRef.value) return;
+// 控制面板悬浮交互在当前模板未使用
 
-    const rect = progressRef.value.getBoundingClientRect();
-    const percent = Math.max(
-      0,
-      Math.min(1, (e.clientX - rect.left) / rect.width)
-    );
-    const seekTime = percent * duration.value;
-
-    videoRef.value.currentTime = seekTime;
-    currentTime.value = seekTime;
-    playProgress.value = percent * 100;
-  };
-
-  const onDragEnd = () => {
-    isDragging.value = false;
-    document.removeEventListener("mousemove", onDrag);
-    document.removeEventListener("mouseup", onDragEnd);
-
-    // 拖拽结束后启动自动隐藏
-    startControlsHideTimer();
-  };
-
-  document.addEventListener("mousemove", onDrag);
-  document.addEventListener("mouseup", onDragEnd);
-};
-
-// 控制面板鼠标事件
-const onControlsMouseEnter = () => {
-  isControlsHovered.value = true;
-  clearTimeout(controlsHideTimer);
-};
-
-const onControlsMouseLeave = () => {
-  isControlsHovered.value = false;
-  // 鼠标离开控制面板后启动自动隐藏
-  startControlsHideTimer();
-};
-
-// 格式化时间
-const formatTime = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins.toString().padStart(2, "0")}:${secs
-    .toString()
-    .padStart(2, "0")}`;
-};
+// 时间格式化在当前模板未使用
 
 // 组件挂载
 onMounted(() => {

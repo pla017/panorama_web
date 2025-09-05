@@ -75,6 +75,7 @@
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePanoramaStore } from '@/stores/panorama'
+import { storeToRefs } from 'pinia'
 import { ArrowLeft, Refresh, Aim, Loading } from '@element-plus/icons-vue'
 import { initPanoramaViewer, type PanoramaViewer } from '@/utils/panorama'
 
@@ -88,9 +89,9 @@ const canvasRef = ref<HTMLCanvasElement>()
 // 全景查看器实例
 let panoramaViewer: PanoramaViewer | null = null
 
-// 响应式数据
-const { scenes, currentSceneId, isLoading, autoRotate } = panoramaStore
-const currentScene = computed(() => scenes.find(s => s.id === currentSceneId))
+// 响应式数据（保持 Ref 类型，避免 watch 重载选择错误）
+const { scenes, currentSceneId, isLoading, autoRotate } = storeToRefs(panoramaStore)
+const currentScene = computed(() => scenes.value.find((s) => s.id === currentSceneId.value))
 
 // 鼠标交互状态
 const isMouseDown = ref(false)
@@ -119,7 +120,7 @@ onUnmounted(() => {
 
 // 监听场景变化
 watch(currentSceneId, (newSceneId) => {
-  const scene = scenes.find(s => s.id === newSceneId)
+  const scene = scenes.value.find((s) => s.id === newSceneId)
   if (scene && panoramaViewer) {
     panoramaViewer.loadScene(scene.imageUrl)
   }

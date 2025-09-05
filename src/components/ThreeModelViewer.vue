@@ -290,7 +290,7 @@ const markerPercentText = ref('—');
 const verticalPercentText = ref('—');
 // 预留给“测圆”工具（UI 已显示），先以只读文本使用
 const circleDiameterText = ref('300 mm');
-const diameterValueText = ref('—');
+// 文本值未在模板使用，移除避免未使用告警
 
 // 测圆
 const circleDiameterMm = ref(300); // 默认 300mm
@@ -400,16 +400,13 @@ const getCurrentModeName = () => {
 let isDragging = false;
 let dragStartX = 0;
 let dragStartY = 0;
-let panelStartX = 0;
-let panelStartY = 0;
+// 面板初始位置已固定，移除未使用的起始位置变量
 
 const startDrag = (e: MouseEvent) => {
   if (e.target !== e.currentTarget) return; // 只允许拖拽标题栏
   isDragging = true;
   dragStartX = e.clientX;
   dragStartY = e.clientY;
-  panelStartX = 0; // 面板初始位置
-  panelStartY = 0;
   document.addEventListener('mousemove', onDrag);
   document.addEventListener('mouseup', stopDrag);
 };
@@ -1565,9 +1562,7 @@ const toggleFullscreen = async () => {
     await document.exitFullscreen?.();
   }
 };
-const reloadModel = async () => {
-  await loadMeshModel();
-};
+// 重新加载函数未在模板中使用，移除避免未使用告警
 
 // 模式切换
 const setMode = (mode: ViewMode) => {

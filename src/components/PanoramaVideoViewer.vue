@@ -214,14 +214,12 @@ const toggleAutoRotate = () => {
 }
 
 // 拖动处理变量
-let isDragging = false
 let lastUpdateTime = 0
 let pendingUpdate: number | null = null
 const UPDATE_THROTTLE = 50 // 50ms 节流，提高响应性
 
 const handleSliderInput = (value: number) => {
   // 拖动过程中实时更新视频画面
-  isDragging = true
   
   // 使用requestAnimationFrame + 节流机制，确保流畅更新
   const now = Date.now()
@@ -245,7 +243,6 @@ const handleSliderInput = (value: number) => {
 
 const seekVideo = (value: number) => {
   // 拖拽结束时确保最终位置准确
-  isDragging = false
   if (panoramaVideoViewer) {
     panoramaVideoViewer.seekTo(value)
   }
