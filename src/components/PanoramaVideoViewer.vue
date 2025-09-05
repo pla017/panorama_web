@@ -113,6 +113,7 @@ import {
   ArrowDown
 } from '@element-plus/icons-vue'
 import { initPanoramaVideoViewer, type PanoramaVideoViewer } from '@/utils/panoramaVideo'
+import config from '@/config/resource'
 
 // 模板引用
 const containerRef = ref<HTMLDivElement>()
@@ -151,7 +152,7 @@ onMounted(async () => {
       panoramaVideoViewer = await initPanoramaVideoViewer(
         canvasRef.value, 
         containerRef.value,
-        '/Out/stitched_output.mp4'
+        config.video
       )
       
       // 监听视频事件
@@ -265,7 +266,7 @@ const retry = async () => {
       panoramaVideoViewer = await initPanoramaVideoViewer(
         canvasRef.value, 
         containerRef.value,
-        '/Out/stitched_output.mp4'
+        config.video
       )
       
       // 监听视频事件

@@ -214,6 +214,7 @@ import { ElMessage } from "element-plus";
 import { Line2 } from 'three/examples/jsm/lines/Line2.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js';
+import config from '@/config/resource'
 
 const props = withDefaults(
   defineProps<{
@@ -221,7 +222,7 @@ const props = withDefaults(
     background?: number;
   }>(),
   {
-    modelUrl: "/Out/mesh.ply",
+    modelUrl: config.mesh,
     background: 0xf0f0f0,
   }
 );
@@ -474,8 +475,9 @@ const initMiniRenderer = async () => {
   miniScene.add(light);
 
   // 使用 BASE_URL 以适配非根路径部署
-  const finalUrl = "/Out/sparse_point.ply";
+  const finalUrl = config.sparsePoint;
   const loader = new PLYLoader();
+  (loader as any).setCrossOrigin?.('anonymous');
   let geo: THREE.BufferGeometry;
   try {
     geo = await new Promise<THREE.BufferGeometry>((resolve, reject) => {
@@ -639,6 +641,7 @@ const handleResize = () => {
 const loadMeshModel = async () => {
   try {
     const loader = new PLYLoader();
+    (loader as any).setCrossOrigin?.('anonymous');
     const geometry = await new Promise<THREE.BufferGeometry>(
       (resolve, reject) => {
         loader.load(props.modelUrl, resolve, undefined, reject);
