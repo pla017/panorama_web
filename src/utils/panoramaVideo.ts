@@ -165,6 +165,7 @@ export async function initPanoramaVideoViewer(
       video.addEventListener('canplay', handleLoad)
       video.addEventListener('error', handleLoadError)
       
+      console.log('[PanoramaVideo] loading url:', videoUrl)
       video.src = videoUrl
       video.load()
     })
