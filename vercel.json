@@ -1,3 +1,5 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+  "rewrites": [
+    { "source": "/files/(.*)", "destination": "http://42.193.255.168/check/report/8005/files/$1" }
+  ]
 }

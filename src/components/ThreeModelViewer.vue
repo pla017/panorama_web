@@ -128,8 +128,9 @@
         <div class="panel-header" @mousedown="startDrag">
           <span class="panel-title">测量工具</span>
           <div class="panel-controls">
-            <button class="control-btn" @click="toggleMeasurePanel" title="最小化">{{ measurePanelMinimized ? '+' : '−' }}</button>
-            <button class="control-btn" @click="hideMeasure" title="隐藏">×</button>
+            <button class="control-btn" @click="toggleMeasurePanel" title="最小化" @mousedown.stop @mouseup.stop @click.stop>{{ measurePanelMinimized ? '+' : '−' }}</button>
+            <button class="control-btn" @click="clearCurrentMeasure" title="清空当前测量" @mousedown.stop @mouseup.stop @click.stop>清</button>
+            <button class="control-btn" @click="hideMeasure" title="隐藏" @mousedown.stop @mouseup.stop @click.stop>×</button>
           </div>
         </div>
         
@@ -307,10 +308,9 @@ const area2Text = ref('—');
 const overlapAreaText = ref('—');
 const overlapPercentText = ref('—');
 
-// 点击外部关闭设置面板
+// 点击外部仅关闭设置弹层，保留测量面板
 const handleClickOutside = () => {
   showSettings.value = false;
-  showMeasure.value = false;
 };
 
 // 缓存模型包围盒中心与尺寸（主视图）
@@ -365,6 +365,11 @@ const initScene = () => {
   modelCanvas.value.addEventListener('contextmenu', onContextMenu);
 };
 
+const setControlsInteractivity = (enabled: boolean) => {
+  if (!controls) return;
+  controls.enabled = enabled;
+};
+
 const toggleSettings = () => {
   showSettings.value = !showSettings.value;
 };
@@ -374,12 +379,31 @@ const toggleMeasure = () => {
   if (showMeasure.value) {
     updateBoundsForMeasure();
     updateSlice();
+    // 打开测量时禁用模型交互（旋转/平移/缩放）
+    setControlsInteractivity(false);
   } else {
     clearMeasureDrawings();
     clearDistance();
     clearCircle();
     clearAreas();
+    // 关闭测量时恢复模型交互
+    setControlsInteractivity(true);
+    applyModeConstraints();
   }
+};
+
+// 清空当前模式的测量绘制
+const clearCurrentMeasure = () => {
+  if (measureMode.value === 'slice_diameter') {
+    clearMeasureDrawings();
+  } else if (measureMode.value === 'distance') {
+    clearDistance();
+  } else if (measureMode.value === 'circle') {
+    clearCircle();
+  } else if (measureMode.value === 'area') {
+    clearAreas();
+  }
+  ElMessage.success('已清空当前测量');
 };
 
 const toggleMeasurePanel = () => {
@@ -430,6 +454,9 @@ const stopDrag = () => {
 
 const hideMeasure = () => {
   showMeasure.value = false;
+  // 恢复模型交互
+  setControlsInteractivity(true);
+  applyModeConstraints();
 };
 
 const setMeasureMode = (m: MeasureMode) => {
@@ -1839,6 +1866,7 @@ onUnmounted(() => {
   z-index: 15;
   user-select: none;
   transition: transform 0.1s ease;
+  padding: 10px;
 }
 
 .panel-header {
