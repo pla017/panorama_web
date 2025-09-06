@@ -35,7 +35,7 @@
         <button class="tool-btn" @click="toggleMiniMap" title="缩略图">缩略图</button>
         <button class="tool-btn" @click="toggleSettings" title="更多设置">设置</button>
         <button class="tool-btn" :class="{active: showMeasure}" @click="toggleMeasure" title="测量">
-          {{ showMeasure ? '隐藏测量' : '测量' }}
+          {{ showMeasure ? '测量' : '测量' }}
         </button>
         <button class="tool-btn" @click="toggleFullscreen" title="全屏">全屏</button>
 
@@ -135,15 +135,19 @@
         </div>
         
         <div v-if="!measurePanelMinimized" class="panel-content">
-          <div v-if="!measurePanelMinimized" class="preset-row">
+          <div class="preset-row">
             <button class="preset-btn" :class="{ active: measureMode==='slice_diameter' }" @click="setMeasureMode('slice_diameter')">剖面</button>
             <button class="preset-btn" :class="{ active: measureMode==='distance' }" @click="setMeasureMode('distance')">测距</button>
             <button class="preset-btn" :class="{ active: measureMode==='circle' }" @click="setMeasureMode('circle')">测圆</button>
             <button class="preset-btn" :class="{ active: measureMode==='area' }" @click="setMeasureMode('area')">测面</button>
           </div>
+          <div class="preset-row" style="margin-top: 6px; align-items:center;">
+            <span style="font-size:12px;color:#6b7280;">自动贴合</span>
+            <el-switch v-model="autoSnapEnabled" size="small" />
+          </div>
           
           <!-- 最小化状态下显示当前模式 -->
-          <div v-else class="minimized-info">
+          <div v-if="measurePanelMinimized" class="minimized-info">
             <span class="current-mode">{{ getCurrentModeName() }}</span>
           </div>
         </div>
@@ -261,6 +265,13 @@ const nudgeScale = ref(1);
 const showMiniMap = ref(false);
 type ViewMode = 'stereo' | 'side' | 'section';
 const viewMode = ref<ViewMode>('stereo');
+// 自动贴合模式（用于吸附选点）
+const autoSnapEnabled = ref(true);
+const autoSnapPixelThreshold = ref(24);
+let hoverMarker: THREE.Mesh | null = null;
+let hoverRing: THREE.Sprite | null = null;
+let hoverPulsePhase = 0;
+let pickMarkers: THREE.Mesh[] = [];
 
 // ===== 测量工具：状态 =====
 const showMeasure = ref(false);
@@ -469,6 +480,8 @@ const setMeasureMode = (m: MeasureMode) => {
   if (m !== 'distance') clearDistance();
   if (m !== 'circle') clearCircle();
   if (m !== 'area') clearAreas();
+  // 保持自动贴合开关状态（不重置），关闭时隐藏悬浮标记
+  if (!autoSnapEnabled.value && hoverMarker) (hoverMarker as THREE.Mesh).visible = false;
 };
 
 const toggleMiniMap = () => {
@@ -749,6 +762,61 @@ const setTopView = () => {
   controls.update();
 };
 
+// ===== 自动贴合：最近顶点（带像素阈值），否则用面命中点 =====
+const screenPixelDistance = (a: THREE.Vector3, b: THREE.Vector3) => {
+  const width = modelContainer.value?.clientWidth || renderer.getSize(new THREE.Vector2()).x;
+  const height = modelContainer.value?.clientHeight || renderer.getSize(new THREE.Vector2()).y;
+  const pa = a.clone().project(camera); const pb = b.clone().project(camera);
+  const ax = (pa.x * 0.5 + 0.5) * width; const ay = (-pa.y * 0.5 + 0.5) * height;
+  const bx = (pb.x * 0.5 + 0.5) * width; const by = (-pb.y * 0.5 + 0.5) * height;
+  return Math.hypot(ax - bx, ay - by);
+};
+const getTriangleWorld = (mesh: THREE.Mesh, faceIndex: number) => {
+  const g = mesh.geometry as THREE.BufferGeometry;
+  const pos = g.getAttribute('position') as THREE.BufferAttribute;
+  const idx = g.getIndex();
+  let i0: number, i1: number, i2: number;
+  if (idx) { const base = faceIndex * 3; i0 = idx.getX(base); i1 = idx.getX(base + 1); i2 = idx.getX(base + 2); }
+  else { i0 = faceIndex * 3; i1 = faceIndex * 3 + 1; i2 = faceIndex * 3 + 2; }
+  const v0 = new THREE.Vector3(pos.getX(i0), pos.getY(i0), pos.getZ(i0)).applyMatrix4(mesh.matrixWorld);
+  const v1 = new THREE.Vector3(pos.getX(i1), pos.getY(i1), pos.getZ(i1)).applyMatrix4(mesh.matrixWorld);
+  const v2 = new THREE.Vector3(pos.getX(i2), pos.getY(i2), pos.getZ(i2)).applyMatrix4(mesh.matrixWorld);
+  return [v0, v1, v2] as [THREE.Vector3, THREE.Vector3, THREE.Vector3];
+};
+const getSnapPointFromEvent = (e: MouseEvent): THREE.Vector3 | null => {
+  const hit = pickOnModel(e);
+  if (!hit) return null;
+  const snap = hit.point.clone();
+  const mesh = (hit.object as any) as THREE.Mesh;
+  let bestPoint = snap;
+  let bestPx = Number.POSITIVE_INFINITY;
+  // 1) 顶点优先：取命中三角最近顶点
+  if (typeof hit.faceIndex === 'number' && mesh && mesh.isMesh) {
+    const [v0, v1, v2] = getTriangleWorld(mesh, hit.faceIndex);
+    const px0 = screenPixelDistance(v0, snap);
+    const px1 = screenPixelDistance(v1, snap);
+    const px2 = screenPixelDistance(v2, snap);
+    bestPx = Math.min(px0, px1, px2);
+    bestPoint = px0 <= px1 && px0 <= px2 ? v0 : (px1 <= px2 ? v1 : v2);
+  }
+  // 2) 边吸附：如果到某条边的屏幕距离更近，则投影到该边
+  if (mesh && typeof hit.faceIndex === 'number') {
+    const [v0, v1, v2] = getTriangleWorld(mesh, hit.faceIndex);
+    const projOnEdge = (a: THREE.Vector3, b: THREE.Vector3) => {
+      const ab = b.clone().sub(a); const t = THREE.MathUtils.clamp(snap.clone().sub(a).dot(ab) / ab.lengthSq(), 0, 1);
+      return a.clone().add(ab.multiplyScalar(t));
+    };
+    const e01 = projOnEdge(v0, v1); const px01 = screenPixelDistance(e01, snap);
+    const e12 = projOnEdge(v1, v2); const px12 = screenPixelDistance(e12, snap);
+    const e20 = projOnEdge(v2, v0); const px20 = screenPixelDistance(e20, snap);
+    const edgeBestPx = Math.min(px01, px12, px20);
+    if (edgeBestPx < bestPx) { bestPx = edgeBestPx; bestPoint = px01 <= px12 && px01 <= px20 ? e01 : (px12 <= px20 ? e12 : e20); }
+  }
+  // 3) 判断阈值：像素距离足够近则使用吸附点，否则返回面命中点
+  if (bestPx <= autoSnapPixelThreshold.value) return bestPoint.clone();
+  return snap;
+};
+
 // ===== 测量工具：事件/计算/绘制 =====
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.key === 'Shift') shiftDragging = true;
@@ -769,12 +837,52 @@ const onMouseDown = (e: MouseEvent) => {
   if (measureMode.value === 'distance') {
     handleDistanceMouseDown(e);
   }
+  // 圆心模式：点击时在吸附点落下标记
+  if (measureMode.value === 'circle') {
+    const pt = autoSnapEnabled.value ? getSnapPointFromEvent(e) : (pickOnModel(e)?.point);
+    if (pt) addPickMarker(pt, 0xffcc00);
+  }
   if (measureMode.value === 'area' && areaSubMode.value === 'polygon') {
     handleAreaPolygonMouseDown(e);
   }
 };
 const onMouseMove = (e: MouseEvent) => {
   if (!showMeasure.value) return;
+  if (autoSnapEnabled.value) {
+    const pt = getSnapPointFromEvent(e);
+    if (pt) {
+      if (!hoverMarker) {
+        const geom = new THREE.SphereGeometry(0.06, 24, 24);
+        const mat = new THREE.MeshBasicMaterial({ color: 0xffcc00, depthTest: false, depthWrite: false });
+        hoverMarker = new THREE.Mesh(geom, mat);
+        hoverMarker.renderOrder = 1001;
+        scene.add(hoverMarker);
+      }
+      hoverMarker.visible = true;
+      hoverMarker.position.copy(pt);
+      // 显示发光环与脉冲动画
+      if (!hoverRing) {
+        const size = 128; const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d')!; ctx.clearRect(0,0,size,size);
+        ctx.beginPath(); ctx.arc(size/2, size/2, size*0.38, 0, Math.PI*2);
+        ctx.lineWidth = size*0.12; ctx.strokeStyle = '#ffd84d'; ctx.shadowColor = '#ffd84d'; ctx.shadowBlur = size*0.2; ctx.stroke();
+        const tex = new THREE.CanvasTexture(canvas);
+        const sm = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true });
+        hoverRing = new THREE.Sprite(sm);
+        hoverRing.renderOrder = 1000 as any;
+        scene.add(hoverRing);
+      }
+      hoverRing.visible = true;
+      hoverRing.position.copy(pt);
+      const base = Math.max(modelSize.length()*0.06, 0.28);
+      hoverPulsePhase = (hoverPulsePhase + 0.12) % (Math.PI*2);
+      const pulse = 1 + 0.12*Math.sin(hoverPulsePhase);
+      hoverRing.scale.setScalar(base * pulse);
+    } else if (hoverMarker) {
+      hoverMarker.visible = false;
+      if (hoverRing) hoverRing.visible = false;
+    }
+  }
   if (shiftDragging && measureMode.value === 'slice_diameter') {
     const deltaPx = e.clientY - lastMouseY;
     lastMouseY = e.clientY;
@@ -1201,17 +1309,18 @@ const centroidXZ = (pts: THREE.Vector3[]) => {
 };
 
 const handleAreaPolygonMouseDown = (e: MouseEvent) => {
-  const hit = pickOnModel(e);
-  if (!hit) return;
+  const pt = autoSnapEnabled.value ? getSnapPointFromEvent(e) : (pickOnModel(e)?.point);
+  if (!pt) return;
   if (areaShapes.length >= 2) clearAreas();
   // 若还没有多边形或上一个是圆，则新建一个多边形
   if (!areaShapes.length || areaShapes[areaShapes.length - 1].type !== 'polygon') {
-    areaShapes.push({ type: 'polygon', y: hit.point.y, points: [hit.point.clone()], line: null as any, fill: null as any, label: null as any, areaM2: 0 });
+    areaShapes.push({ type: 'polygon', y: pt.y, points: [pt.clone()], line: null as any, fill: null as any, label: null as any, areaM2: 0 });
   } else {
-    areaShapes[areaShapes.length - 1].points!.push(hit.point.clone());
+    areaShapes[areaShapes.length - 1].points!.push(pt.clone());
   }
   drawAreaShape(areaShapes.length - 1);
   updateAreaPanel();
+  addPickMarker(pt, 0x0ea5e9);
 };
 
 const undoLastPolygonPoint = () => {
@@ -1333,7 +1442,7 @@ const clearCircle = () => {
 };
 
 const handleCircleMouseMove = (e: MouseEvent) => {
-  const hit = pickOnModel(e);
+  const hit = autoSnapEnabled.value ? { point: getSnapPointFromEvent(e) } as any : pickOnModel(e);
   if (!hit) return;
   circleCenter = hit.point.clone();
   drawCircle();
@@ -1348,7 +1457,7 @@ const onWheel = (e: WheelEvent) => {
 };
 
 const handleAreaCircleMouseMove = (e: MouseEvent) => {
-  const hit = pickOnModel(e);
+  const hit = autoSnapEnabled.value ? { point: getSnapPointFromEvent(e) } as any : pickOnModel(e);
   if (!hit) return;
   // 如果已有两个面，重置
   if (areaShapes.length >= 2) clearAreas();
@@ -1407,7 +1516,7 @@ const drawCircle = () => {
 };
 
 const handleDistanceMouseDown = (e: MouseEvent) => {
-  const hit = pickOnModel(e);
+  const hit = autoSnapEnabled.value ? { point: getSnapPointFromEvent(e) } as any : pickOnModel(e);
   if (!hit) return;
   // 若已有线，检查是否点在直线附近以拖动浮标
   if (distStart && distEnd && isNearLine(hit.point, distStart, distEnd, 0.02)) {
@@ -1417,10 +1526,29 @@ const handleDistanceMouseDown = (e: MouseEvent) => {
   }
   if (!distStart) {
     distStart = hit.point.clone();
+    // 选中反馈：在点位处打一个小点
+    try {
+      const g = new THREE.SphereGeometry(0.045, 14, 14);
+      const m = new THREE.MeshBasicMaterial({ color: 0x34c759, depthTest: false, depthWrite: false });
+      const dot = new THREE.Mesh(g, m);
+      dot.position.copy(hit.point as THREE.Vector3);
+      dot.renderOrder = 1002;
+      scene.add(dot);
+      pickMarkers.push(dot);
+    } catch {}
   } else if (!distEnd) {
     distEnd = hit.point.clone();
     drawDistanceLine();
     updateDistanceReadouts();
+    try {
+      const g = new THREE.SphereGeometry(0.045, 14, 14);
+      const m = new THREE.MeshBasicMaterial({ color: 0x34c759, depthTest: false, depthWrite: false });
+      const dot = new THREE.Mesh(g, m);
+      dot.position.copy(hit.point as THREE.Vector3);
+      dot.renderOrder = 1002;
+      scene.add(dot);
+      pickMarkers.push(dot);
+    } catch {}
   } else {
     // 重置为新测量
     clearDistance();
@@ -1435,9 +1563,9 @@ const handleDistanceMouseMove = (e: MouseEvent) => {
     return;
   }
   if (distStart && !distEnd) {
-    const hit = pickOnModel(e);
-    if (hit) {
-      distEnd = hit.point.clone();
+    const pt = autoSnapEnabled.value ? getSnapPointFromEvent(e) : (pickOnModel(e)?.point);
+    if (pt) {
+      distEnd = pt.clone();
       drawDistanceLine();
       updateDistanceReadouts();
       distEnd = null; // 仅用于预览，不锁定终点
@@ -1568,6 +1696,17 @@ const nudge = (dx: number, dy: number) => {
   camera.position.add(delta);
   controls.target.add(delta);
   controls.update();
+};
+
+// 点击确认标记（小点）
+const addPickMarker = (pos: THREE.Vector3, color: number) => {
+  const g = new THREE.SphereGeometry(0.045, 14, 14);
+  const m = new THREE.MeshBasicMaterial({ color, depthTest: false, depthWrite: false });
+  const dot = new THREE.Mesh(g, m);
+  dot.position.copy(pos);
+  dot.renderOrder = 1002;
+  scene.add(dot);
+  pickMarkers.push(dot);
 };
 const resetView = () => {
   updateModelBounds();
@@ -1932,6 +2071,22 @@ onUnmounted(() => {
 .control-btn:hover {
   background: #f3f4f6;
   color: #374151;
+}
+.chip {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  font-size: 12px;
+  cursor: pointer;
+}
+.chip.active {
+  background: #ecfdf5;
+  border-color: #34d399;
+  color: #059669;
+  box-shadow: 0 0 0 2px rgba(52,211,153,0.25) inset;
 }
 
 .panel-content {
