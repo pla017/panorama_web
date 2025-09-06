@@ -182,6 +182,9 @@
             <button class="preset-btn" :class="{ active: areaSubMode==='circle' }" @click="setAreaSubMode('circle')">圆形</button>
             <button class="preset-btn" :class="{ active: areaSubMode==='polygon' }" @click="setAreaSubMode('polygon')">多边形</button>
           </div>
+          <div class="preset-row" style="margin-top:8px">
+            <button class="preset-btn" @click="clearAreas" @mousedown.stop @mouseup.stop @click.stop>清空当前面</button>
+          </div>
           <div class="hint-row" v-if="areaSubMode==='circle'">在模型上移动鼠标设置圆心，滚轮每次±50mm 调整直径</div>
           <div class="hint-row" v-else>单击添加顶点，双击闭合；右键撤销最近点</div>
           <div class="result-row">面1面积：{{ area1Text }}</div>
@@ -1046,8 +1049,17 @@ const exportMainViewPNG = () => {
   }
 };
 const clearAreas = () => {
-  for (let i = 0; i < areaShapes.length; i++) removeAreaShape(i);
+  // 先移除并销毁，再置空，避免索引变化导致遗留
+  for (let i = areaShapes.length - 1; i >= 0; i--) removeAreaShape(i);
   areaShapes = [];
+  // 额外清理可能残留的 Line2/Fill/Label（保险处理）
+  scene.traverse((obj) => {
+    if ((obj as any).isLine2 && (obj as any).material && (obj as any).geometry) {
+      scene.remove(obj);
+      (obj as any).geometry.dispose?.();
+      (obj as any).material.dispose?.();
+    }
+  });
   area1Text.value = '—';
   area2Text.value = '—';
   overlapAreaText.value = '—';
@@ -1123,6 +1135,11 @@ const drawAreaShape = (idx: number) => {
     s.label = label;
     scene.add(label);
   } else if (s.type === 'polygon') {
+    // 在重绘前，清理旧的 line/fill/label，避免残留
+    if (s.line) { scene.remove(s.line); s.line.geometry.dispose(); (s.line.material as THREE.Material)?.dispose?.(); s.line = undefined as any; }
+    if (s.fill) { scene.remove(s.fill); (s.fill.geometry as THREE.BufferGeometry).dispose(); (s.fill.material as THREE.Material).dispose(); s.fill = undefined as any; }
+    if (s.label) { scene.remove(s.label); s.label.material.dispose(); (s.label.material as THREE.SpriteMaterial).map?.dispose?.(); s.label = undefined as any; }
+
     // 线
     const pos: number[] = [];
     for (let i = 0; i < (s.points?.length || 0); i++) {
@@ -1779,6 +1796,12 @@ onUnmounted(() => {
   color: #374151;
   font-size: 12px;
   cursor: pointer;
+}
+.preset-btn.active {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #4338ca;
+  box-shadow: 0 0 0 2px rgba(199,210,254,0.5) inset;
 }
 .preset-btn:hover {
   background: #f3f4f6;
